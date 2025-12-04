@@ -1,0 +1,25 @@
+{
+  "rpc_endpoint": "https://api.mainnet-beta.solana.com",
+  "websocket_endpoint": "wss://api.mainnet-beta.solana.com",
+  "raydium_program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+  "raydium_authority": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+  "serum_program_id": "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
+  
+  "bot_settings": {
+    "buy_delay_seconds": 0,
+    "buy_amount_sol": 0.1,
+    "take_profit_percentage": 100,
+    "stop_loss_percentage": 50,
+    "slippage_bps": 500,
+    "check_rug_pull": true,
+    "max_buy_tax": 10,
+    "max_sell_tax": 10,
+    "min_liquidity_sol": 5
+  },
+  
+  "monitoring": {
+    "enable_notifications": false,
+    "webhook_url": "",
+    "log_level": "INFO"
+  }
+}

@@ -1,0 +1,12 @@
+# Solana Sniping Bot - Versi Selamat
+
+## Kebergantungan Tambahan
+solana>=0.30.0
+solders>=0.18.0
+websockets>=12.0
+aiohttp>=3.9.0
+
+# Kekal dari requirements.txt asal
+base58>=2.1.1
+requests>=2.31.0
+colorama>=0.4.6
