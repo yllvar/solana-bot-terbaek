@@ -2,9 +2,6 @@
 """
 Solana Sniping Bot - Versi Selamat
 Bot dagangan automatik untuk Raydium DEX
-
-AMARAN: Bot ini untuk tujuan pendidikan sahaja.
-Dagangan cryptocurrency melibatkan risiko tinggi.
 """
 
 import asyncio
@@ -13,18 +10,19 @@ import sys
 from pathlib import Path
 from colorama import init, Fore, Style
 
-# Tambah parent directory ke path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from safe_bot.config import BotConfig
 from safe_bot.wallet import WalletManager
 from safe_bot.monitor import PoolMonitor
 from safe_bot.security import SecurityAnalyzer
+from safe_bot.raydium.swap import RaydiumSwap
+from safe_bot.transaction import TransactionBuilder
+from safe_bot.price_tracker import PriceTracker
+from safe_bot.triggers import TradeTriggers
 
-# Inisialisasi colorama
 init(autoreset=True)
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -35,87 +33,79 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 class SolanaSnipingBot:
     """Kelas utama untuk bot sniping Solana"""
     
     def __init__(self):
-        """Inisialisasi bot"""
         self.config = None
         self.wallet = None
         self.monitor = None
         self.security = None
+        self.raydium_swap = None
+        self.tx_builder = None
+        self.price_tracker = None
+        self.triggers = None
         self.is_running = False
         
     async def initialize(self):
         """Inisialisasi semua komponen bot"""
         try:
-            # Muat konfigurasi
             print(f"\n{Fore.CYAN}{'='*60}")
             print(f"{Fore.CYAN}🚀 SOLANA SNIPING BOT - VERSI SELAMAT")
             print(f"{Fore.CYAN}{'='*60}\n")
             
+            # 1. Config
             print(f"{Fore.YELLOW}📋 Memuat konfigurasi...")
             self.config = BotConfig()
             print(f"{Fore.GREEN}✅ Konfigurasi berjaya dimuat\n")
             
-            # Setup wallet
+            # 2. Wallet
             print(f"{Fore.YELLOW}👛 Menyediakan dompet...")
             self.wallet = WalletManager(self.config.rpc_endpoint)
             
-            # Minta private key
             while True:
                 private_key = input(f"{Fore.CYAN}🔑 Sila masukkan private key anda: {Style.RESET_ALL}")
-                
                 if self.wallet.load_from_private_key(private_key):
                     break
                 else:
                     print(f"{Fore.RED}❌ Private key tidak sah. Sila cuba lagi.\n")
             
-            # Papar maklumat dompet
             print(f"\n{Fore.GREEN}✅ Alamat Dompet: {Fore.WHITE}{self.wallet.address}")
-            
             balance = await self.wallet.get_balance()
             print(f"{Fore.GREEN}💰 Baki SOL: {Fore.WHITE}{balance:.4f} SOL\n")
             
             if balance < self.config.buy_amount:
                 print(f"{Fore.RED}⚠️  AMARAN: Baki tidak mencukupi untuk dagangan!")
-                print(f"{Fore.RED}   Diperlukan: {self.config.buy_amount} SOL")
-                print(f"{Fore.RED}   Anda ada: {balance} SOL\n")
             
-            # Setup security analyzer
-            print(f"{Fore.YELLOW}🛡️  Menyediakan penganalisis keselamatan...")
+            # 3. Core Components
+            print(f"{Fore.YELLOW}⚙️  Menyediakan komponen dagangan...")
+            self.raydium_swap = RaydiumSwap(self.wallet.client, self.wallet)
+            self.tx_builder = TransactionBuilder(self.wallet.client, self.wallet)
+            self.price_tracker = PriceTracker(self.wallet.client, self.raydium_swap)
+            self.triggers = TradeTriggers(self.price_tracker, self.raydium_swap)
             self.security = SecurityAnalyzer(self.wallet.client)
-            print(f"{Fore.GREEN}✅ Penganalisis keselamatan bersedia\n")
             
-            # Setup pool monitor
+            # 4. Monitor
             print(f"{Fore.YELLOW}🔍 Menyediakan pemantau pool...")
             self.monitor = PoolMonitor(
                 self.config.rpc_endpoint,
                 self.config.websocket_endpoint,
                 self.config.raydium_program_id,
+                self.config,
+                self.wallet,
                 callback=self.on_new_pool
             )
-            print(f"{Fore.GREEN}✅ Pemantau pool bersedia\n")
+            print(f"{Fore.GREEN}✅ Semua sistem bersedia!\n")
             
             return True
             
-        except FileNotFoundError as e:
-            print(f"{Fore.RED}❌ Error: {e}")
-            print(f"{Fore.YELLOW}💡 Pastikan fail bot_config.json wujud")
-            return False
         except Exception as e:
             logger.error(f"Error initializing bot: {e}", exc_info=True)
             print(f"{Fore.RED}❌ Error semasa inisialisasi: {e}")
             return False
     
     async def on_new_pool(self, pool_info: dict):
-        """
-        Callback apabila pool baharu dijumpai
-        
-        Args:
-            pool_info: Maklumat pool baharu
-        """
+        """Callback apabila pool baharu dijumpai"""
         try:
             token_address = pool_info.get('token_address')
             pool_address = pool_info.get('pool_address')
@@ -126,18 +116,21 @@ class SolanaSnipingBot:
             print(f"{Fore.WHITE}Token: {token_address}")
             print(f"{Fore.WHITE}Pool: {pool_address}\n")
             
-            # Check keselamatan jika enabled
+            # 1. Security Check
             if self.config.check_rug_pull:
                 print(f"{Fore.YELLOW}🔍 Menganalisis keselamatan token...")
-                
-                # TODO: Implement actual security check
-                # security_result = await self.security.analyze_token(token_mint, pool_address)
-                
-                print(f"{Fore.GREEN}✅ Analisis keselamatan selesai\n")
+                # Placeholder check
+                print(f"{Fore.GREEN}✅ Analisis keselamatan selesai (Placeholder)\n")
             
-            # TODO: Implement buy logic
-            print(f"{Fore.YELLOW}💡 Fungsi pembelian automatik akan dilaksanakan di sini")
-            print(f"{Fore.YELLOW}   (Masih dalam pembangunan)\n")
+            # 2. Auto Buy (Handled by Monitor internally, but we can log here)
+            if self.config.buy_amount > 0:
+                print(f"{Fore.YELLOW}🤖 Auto Buy diaktifkan...")
+                
+                # Jika buy berjaya (simulasi logic flow):
+                # 3. Start Tracking
+                # await self.price_tracker.start_tracking(token_address, pool_address)
+                # self.triggers.set_triggers(token_address, self.config.take_profit_percentage, self.config.stop_loss_percentage)
+                # self.triggers.open_position(token_address, ...)
             
         except Exception as e:
             logger.error(f"Error processing new pool: {e}", exc_info=True)
@@ -147,7 +140,6 @@ class SolanaSnipingBot:
         """Mulakan bot"""
         try:
             self.is_running = True
-            
             print(f"{Fore.GREEN}{'='*60}")
             print(f"{Fore.GREEN}✅ BOT BERJAYA DIMULAKAN!")
             print(f"{Fore.GREEN}{'='*60}\n")
@@ -156,13 +148,10 @@ class SolanaSnipingBot:
             print(f"{Fore.WHITE}   • Jumlah Beli: {self.config.buy_amount} SOL")
             print(f"{Fore.WHITE}   • Take Profit: {self.config.take_profit_percentage}%")
             print(f"{Fore.WHITE}   • Stop Loss: {self.config.stop_loss_percentage}%")
-            print(f"{Fore.WHITE}   • Slippage: {self.config.slippage_bps / 100}%")
-            print(f"{Fore.WHITE}   • Check Rug Pull: {'Ya' if self.config.check_rug_pull else 'Tidak'}\n")
             
             print(f"{Fore.YELLOW}🔍 Memantau pool baharu...")
             print(f"{Fore.YELLOW}   Tekan Ctrl+C untuk hentikan bot\n")
             
-            # Mulakan monitoring
             await self.monitor.start_monitoring()
             
         except KeyboardInterrupt:
@@ -176,25 +165,11 @@ class SolanaSnipingBot:
     async def cleanup(self):
         """Bersihkan resources"""
         print(f"\n{Fore.YELLOW}🧹 Membersihkan resources...")
-        
         if self.monitor:
             await self.monitor.stop_monitoring()
-        
         if self.wallet:
             await self.wallet.close()
-        
         print(f"{Fore.GREEN}✅ Selesai. Terima kasih!\n")
-    
-    def display_menu(self):
-        """Papar menu utama"""
-        print(f"\n{Fore.CYAN}{'='*60}")
-        print(f"{Fore.CYAN}📋 MENU UTAMA")
-        print(f"{Fore.CYAN}{'='*60}\n")
-        print(f"{Fore.WHITE}1. Mulakan Bot (Monitor & Snipe)")
-        print(f"{Fore.WHITE}2. Lihat Konfigurasi")
-        print(f"{Fore.WHITE}3. Ubah Tetapan")
-        print(f"{Fore.WHITE}4. Semak Baki Dompet")
-        print(f"{Fore.WHITE}5. Keluar\n")
     
     async def run_interactive(self):
         """Jalankan bot dalam mod interaktif"""
@@ -208,60 +183,37 @@ class SolanaSnipingBot:
             elif choice == '2':
                 self.show_config()
             elif choice == '3':
-                await self.change_settings()
+                print("Fungsi ubah tetapan belum diimplementasi.")
             elif choice == '4':
-                await self.check_balance()
+                if self.wallet:
+                    bal = await self.wallet.get_balance()
+                    print(f"\n💰 Baki: {bal:.4f} SOL\n")
             elif choice == '5':
-                print(f"\n{Fore.GREEN}👋 Terima kasih! Selamat berdagang!\n")
                 break
             else:
-                print(f"{Fore.RED}❌ Pilihan tidak sah. Sila cuba lagi.\n")
-    
-    def show_config(self):
-        """Papar konfigurasi semasa"""
-        print(f"\n{Fore.CYAN}{'='*60}")
-        print(f"{Fore.CYAN}⚙️  KONFIGURASI SEMASA")
-        print(f"{Fore.CYAN}{'='*60}\n")
-        print(f"{Fore.WHITE}Jumlah Beli: {self.config.buy_amount} SOL")
-        print(f"{Fore.WHITE}Take Profit: {self.config.take_profit_percentage}%")
-        print(f"{Fore.WHITE}Stop Loss: {self.config.stop_loss_percentage}%")
-        print(f"{Fore.WHITE}Slippage: {self.config.slippage_bps / 100}%")
-        print(f"{Fore.WHITE}Check Rug Pull: {'Ya' if self.config.check_rug_pull else 'Tidak'}")
-        print(f"{Fore.WHITE}Kecairan Minimum: {self.config.min_liquidity} SOL\n")
-    
-    async def change_settings(self):
-        """Ubah tetapan bot"""
-        print(f"\n{Fore.YELLOW}⚙️  Fungsi ubah tetapan akan dilaksanakan di sini")
-        print(f"{Fore.YELLOW}   (Masih dalam pembangunan)\n")
-    
-    async def check_balance(self):
-        """Semak baki dompet"""
-        if self.wallet:
-            balance = await self.wallet.get_balance()
-            print(f"\n{Fore.GREEN}💰 Baki Semasa: {Fore.WHITE}{balance:.4f} SOL\n")
-        else:
-            print(f"\n{Fore.RED}❌ Dompet belum dimuat\n")
+                print("Pilihan tidak sah.")
 
+    def display_menu(self):
+        print(f"\n{Fore.CYAN}📋 MENU UTAMA")
+        print("1. Mulakan Bot")
+        print("2. Lihat Konfigurasi")
+        print("3. Ubah Tetapan")
+        print("4. Semak Baki")
+        print("5. Keluar\n")
+
+    def show_config(self):
+        print(f"\n⚙️  KONFIGURASI")
+        print(f"Buy Amount: {self.config.buy_amount} SOL")
+        print(f"TP: {self.config.take_profit_percentage}%")
+        print(f"SL: {self.config.stop_loss_percentage}%")
 
 async def main():
-    """Fungsi utama"""
     bot = SolanaSnipingBot()
-    
-    # Inisialisasi bot
     if await bot.initialize():
-        # Jalankan bot dalam mod interaktif
         await bot.run_interactive()
-    else:
-        print(f"\n{Fore.RED}❌ Gagal memulakan bot\n")
-        sys.exit(1)
-
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}👋 Bot dihentikan. Terima kasih!\n")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        print(f"\n{Fore.RED}❌ Error kritikal: {e}\n")
-        sys.exit(1)
+        pass
