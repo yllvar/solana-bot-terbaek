@@ -44,45 +44,84 @@ class PoolMonitor:
         """Mula monitor pool baharu"""
         self.is_monitoring = True
         logger.info("🔍 Memulakan pemantauan pool baharu...")
+        logger.info(f"📡 Connecting to WebSocket: {self.ws_endpoint}")
+        logger.info(f"🎯 Monitoring Raydium Program: {self.raydium_program_id}")
+        
+        heartbeat_counter = 0
+        last_heartbeat = asyncio.get_event_loop().time()
         
         try:
             async with connect(self.ws_endpoint) as websocket:
+                logger.info("🔌 WebSocket connected successfully")
+                
                 await websocket.logs_subscribe(
                     filter_=RpcTransactionLogsFilterMentions(self.raydium_program_id),
                     commitment=Confirmed
                 )
                 logger.info("✅ Berjaya subscribe ke Raydium program")
+                logger.info("👀 Menunggu transaksi baharu... (Bot sedang aktif)")
+                logger.info("💡 Heartbeat akan dipaparkan setiap 30 saat untuk menunjukkan bot masih berjalan")
                 
                 async for notification in websocket:
                     if not self.is_monitoring:
+                        logger.info("🛑 Stop signal received, exiting monitor loop")
                         break
+                    
+                    # Heartbeat setiap 30 saat
+                    current_time = asyncio.get_event_loop().time()
+                    if current_time - last_heartbeat >= 30:
+                        heartbeat_counter += 1
+                        logger.info(f"💓 Heartbeat #{heartbeat_counter} - Bot masih aktif dan memantau...")
+                        last_heartbeat = current_time
+                    
                     try:
+                        logger.debug(f"📨 Received notification: {type(notification)}")
                         await self._process_notification(notification)
                     except Exception as e:
-                        logger.error(f"❌ Error memproses notifikasi: {e}")
+                        logger.error(f"❌ Error memproses notifikasi: {e}", exc_info=True)
                         
         except Exception as e:
-            logger.error(f"❌ Error dalam monitoring: {e}")
+            logger.error(f"❌ Error dalam monitoring: {e}", exc_info=True)
         finally:
             self.is_monitoring = False
             logger.info("⏹️  Pemantauan dihentikan")
     
     async def _process_notification(self, notification):
         """Proses notifikasi dari WebSocket"""
-        if hasattr(notification, 'result'):
-            result = notification.result
-            
-            if self._is_new_pool(result):
-                pool_info = await self._extract_pool_info(result)
+        try:
+            if hasattr(notification, 'result'):
+                result = notification.result
+                logger.debug(f"📦 Processing result: {result}")
                 
-                if pool_info:
-                    logger.info(f"🆕 Pool baharu dijumpai: {pool_info.get('token_address')}")
+                if self._is_new_pool(result):
+                    logger.info("🆕 Potential new pool detected! Extracting info...")
+                    pool_info = await self._extract_pool_info(result)
                     
-                    if self.callback:
-                        await self.callback(pool_info)
-                    
-                    if self.config.buy_amount > 0:
-                        await self.execute_auto_buy(pool_info)
+                    if pool_info:
+                        logger.info(f"✨ Pool baharu dijumpai!")
+                        logger.info(f"   Token: {pool_info.get('token_address')}")
+                        logger.info(f"   Pool: {pool_info.get('pool_address')}")
+                        logger.info(f"   Base Mint: {pool_info.get('base_mint', 'N/A')}")
+                        logger.info(f"   Quote Mint: {pool_info.get('quote_mint', 'N/A')}")
+                        
+                        # Jalankan callback (untuk UI/Log)
+                        if self.callback:
+                            await self.callback(pool_info)
+                        
+                        # AUTO BUY LOGIC
+                        if self.config.buy_amount > 0:
+                            logger.info(f"🤖 Auto Buy enabled (Amount: {self.config.buy_amount} SOL)")
+                            await self.execute_auto_buy(pool_info)
+                        else:
+                            logger.info("ℹ️  Auto Buy disabled (buy_amount = 0)")
+                    else:
+                        logger.debug("⚠️  Could not extract pool info from notification")
+                else:
+                    logger.debug("ℹ️  Not a new pool initialization (regular transaction)")
+            else:
+                logger.debug(f"⚠️  Notification has no result attribute: {notification}")
+        except Exception as e:
+            logger.error(f"❌ Error in _process_notification: {e}", exc_info=True)
     
     async def execute_auto_buy(self, pool_info: Dict[str, Any]):
         """Laksanakan pembelian automatik"""
@@ -150,8 +189,10 @@ class PoolMonitor:
         """Check jika result adalah pool baharu"""
         if hasattr(result, 'value') and result.value:
             logs = result.value.logs if hasattr(result.value, 'logs') else []
+            logger.debug(f"🔎 Checking {len(logs)} log entries for pool initialization")
             for log in logs:
                 if 'initialize' in log.lower() or 'create' in log.lower():
+                    logger.debug(f"✅ Found initialization keyword in log: {log[:100]}...")
                     return True
         return False
     
@@ -162,27 +203,36 @@ class PoolMonitor:
         """
         try:
             if not hasattr(result, 'value'):
+                logger.debug("⚠️  Result has no 'value' attribute")
                 return None
                 
             logs = result.value.logs
+            logger.debug(f"📋 Scanning {len(logs)} logs for ray_log data")
             
-            for log in logs:
+            for i, log in enumerate(logs):
                 if "ray_log:" in log:
+                    logger.info(f"🎯 Found ray_log in log entry #{i}")
                     # Format: "Program log: ray_log: <BASE64_DATA>"
                     parts = log.split("ray_log: ")
                     if len(parts) < 2:
+                        logger.warning(f"⚠️  ray_log format unexpected: {log[:100]}")
                         continue
                         
                     b64_data = parts[1].strip()
+                    logger.debug(f"📦 Base64 data length: {len(b64_data)} chars")
                     pool_data = self._decode_ray_log(b64_data)
                     
                     if pool_data:
+                        logger.info("✅ Successfully decoded ray_log data!")
                         return pool_data
+                    else:
+                        logger.warning("⚠️  Failed to decode ray_log data")
             
+            logger.debug("ℹ️  No ray_log found in logs")
             return None
             
         except Exception as e:
-            logger.error(f"Error extracting pool info: {e}")
+            logger.error(f"❌ Error extracting pool info: {e}", exc_info=True)
             return None
 
     def _decode_ray_log(self, b64_data: str) -> Optional[Dict[str, Any]]:

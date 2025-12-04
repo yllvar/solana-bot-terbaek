@@ -23,15 +23,28 @@ from solana_bot.triggers import TradeTriggers
 
 init(autoreset=True)
 
+# Setup logging dengan format yang lebih baik dan real-time output
+import datetime
+log_filename = f"bot_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bot.log'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(log_filename, mode='w'),  # New log file setiap run
+        logging.StreamHandler()  # Console output
+    ],
+    force=True  # Override any existing config
 )
+
+# Set logging untuk libraries pihak ketiga ke WARNING
+logging.getLogger('solana').setLevel(logging.WARNING)
+logging.getLogger('solders').setLevel(logging.WARNING)
+logging.getLogger('websockets').setLevel(logging.WARNING)
+logging.getLogger('aiohttp').setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
+logger.info(f"📝 Log file: {log_filename}")
 
 class SolanaSnipingBot:
     """Kelas utama untuk bot sniping Solana"""
