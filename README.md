@@ -473,6 +473,3 @@ Projek ini adalah perisian sumber terbuka. Gunakan dengan bertanggungjawab.
 
 ---
 
-**Versi:** 1.0.0  
-**Kemaskini Terakhir:** 4 Disember 2025  
-**Bahasa:** Bahasa Malaysia
