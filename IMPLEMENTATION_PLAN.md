@@ -14,9 +14,9 @@ Dokumen ini mengandungi rancangan terperinci untuk melengkapkan bot Solana snipi
 Bina instruction untuk swap token di Raydium AMM
 
 #### Fail Baharu:
-- `safe_bot/raydium/swap.py`
-- `safe_bot/raydium/layouts.py`
-- `safe_bot/raydium/constants.py`
+- `solana_bot/raydium/swap.py`
+- `solana_bot/raydium/layouts.py`
+- `solana_bot/raydium/constants.py`
 
 #### Implementasi:
 
