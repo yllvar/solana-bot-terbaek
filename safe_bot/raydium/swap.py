@@ -7,15 +7,16 @@ from solders.pubkey import Pubkey
 from solders.instruction import Instruction, AccountMeta
 from solders.system_program import ID as SYSTEM_PROGRAM_ID
 from solders.sysvar import RENT
-from spl.token.constants import TOKEN_PROGRAM_ID
+from spl.token.instructions import get_associated_token_address
 
 from .constants import (
     RAYDIUM_AMM_PROGRAM_ID,
     RAYDIUM_AUTHORITY_V4,
     SERUM_PROGRAM_ID,
-    SWAP_INSTRUCTION_INDEX
+    SWAP_INSTRUCTION_INDEX,
+    TOKEN_PROGRAM_ID
 )
-from .layouts import SWAP_LAYOUT
+from .layouts import SWAP_LAYOUT, AMM_INFO_LAYOUT_V4, MARKET_LAYOUT_V3
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,10 @@ class RaydiumSwap:
     def __init__(self, client, wallet):
         """
         Inisialisasi RaydiumSwap
-        
-        Args:
-            client: AsyncClient Solana
-            wallet: WalletManager instance
         """
         self.client = client
         self.wallet = wallet
-        self.program_id = Pubkey.from_string(RAYDIUM_AMM_PROGRAM_ID)
+        self.program_id = RAYDIUM_AMM_PROGRAM_ID
     
     def calculate_min_amount_out(
         self,
@@ -41,13 +38,6 @@ class RaydiumSwap:
     ) -> int:
         """
         Kira jumlah minimum keluar berdasarkan slippage
-        
-        Args:
-            expected_amount: Jumlah jangkaan keluar
-            slippage_bps: Slippage dalam basis points (cth: 500 = 5%)
-            
-        Returns:
-            Jumlah minimum keluar (integer)
         """
         slippage_multiplier = (10000 - slippage_bps) / 10000
         return int(expected_amount * slippage_multiplier)
@@ -63,17 +53,6 @@ class RaydiumSwap:
     ) -> Instruction:
         """
         Bina instruction untuk swap
-        
-        Args:
-            pool_keys: Dictionary mengandungi kunci pool (AMM ID, Authority, Vaults, dll)
-            amount_in: Jumlah token masuk (dalam unit terkecil/lamports)
-            min_amount_out: Jumlah minimum token keluar
-            token_account_in: Akaun token sumber pengguna
-            token_account_out: Akaun token destinasi pengguna
-            owner: Public key pemilik (wallet address)
-            
-        Returns:
-            Instruction Solana yang siap untuk transaksi
         """
         
         # Data instruction
@@ -86,7 +65,6 @@ class RaydiumSwap:
         )
         
         # Senarai akaun yang diperlukan oleh Raydium Swap V4
-        # Urutan akaun SANGAT PENTING
         keys = [
             # 1. Token Program
             AccountMeta(pubkey=TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),
@@ -130,15 +108,71 @@ class RaydiumSwap:
 
     async def get_pool_keys(self, pool_address: str) -> Optional[Dict[str, Any]]:
         """
-        Dapatkan kunci pool dari blockchain
-        
-        Args:
-            pool_address: Alamat pool Raydium
-            
-        Returns:
-            Dictionary kunci pool atau None jika gagal
+        Dapatkan kunci pool dari blockchain secara lengkap
         """
-        # TODO: Implementasi penuh untuk fetch dan parse akaun AMM
-        # Ini memerlukan parsing data akaun menggunakan AMM_INFO_LAYOUT_V4
-        # dan kemudian fetch akaun Serum Market untuk mendapatkan kunci tambahan
-        pass
+        try:
+            pool_pubkey = Pubkey.from_string(pool_address)
+            
+            # 1. Fetch AMM Account
+            amm_info = await self.client.get_account_info(pool_pubkey)
+            if not amm_info.value:
+                logger.error("Gagal mendapatkan akaun AMM")
+                return None
+                
+            amm_data = AMM_INFO_LAYOUT_V4.parse(amm_info.value.data)
+            
+            # 2. Extract Market ID
+            market_id = Pubkey.from_bytes(amm_data.market_id)
+            
+            # 3. Fetch Market Account
+            market_info = await self.client.get_account_info(market_id)
+            if not market_info.value:
+                logger.error("Gagal mendapatkan akaun Market")
+                return None
+                
+            market_data = MARKET_LAYOUT_V3.parse(market_info.value.data)
+            
+            # 4. Construct Pool Keys
+            pool_keys = {
+                'amm_id': pool_pubkey,
+                'authority': RAYDIUM_AUTHORITY_V4,
+                'base_mint': Pubkey.from_bytes(amm_data.base_mint),
+                'quote_mint': Pubkey.from_bytes(amm_data.quote_mint),
+                'lp_mint': Pubkey.from_bytes(amm_data.lp_mint),
+                'base_decimals': amm_data.base_decimal,
+                'quote_decimals': amm_data.quote_decimal,
+                'base_vault': Pubkey.from_bytes(amm_data.base_vault),
+                'quote_vault': Pubkey.from_bytes(amm_data.quote_vault),
+                'open_orders': Pubkey.from_bytes(amm_data.open_orders),
+                'target_orders': Pubkey.from_bytes(amm_data.target_orders),
+                'market_program_id': Pubkey.from_bytes(amm_data.market_program_id),
+                'market_id': market_id,
+                'market_bids': Pubkey.from_bytes(market_data.bids),
+                'market_asks': Pubkey.from_bytes(market_data.asks),
+                'market_event_queue': Pubkey.from_bytes(market_data.event_queue),
+                'market_base_vault': Pubkey.from_bytes(market_data.base_vault),
+                'market_quote_vault': Pubkey.from_bytes(market_data.quote_vault),
+                'market_vault_signer': Pubkey.from_bytes(market_data.own_address) # Selalunya own_address dalam layout V3 adalah vault signer? Perlu verify.
+                # Nota: Vault signer nonce digunakan untuk derive address jika perlu.
+                # Untuk simplifikasi, kita anggap kita boleh derive atau ia ada dalam data.
+                # Sebenarnya, market vault signer perlu diderive dari market id dan nonce.
+            }
+            
+            # Derive Market Vault Signer (jika own_address bukan vault signer)
+            # Biasanya kita derive:
+            nonce = market_data.vault_signer_nonce
+            vault_signer_key, _ = Pubkey.find_program_address(
+                [bytes(market_id), bytes([nonce])],
+                Pubkey.from_bytes(amm_data.market_program_id) # Serum Program ID
+            )
+            pool_keys['market_vault_signer'] = vault_signer_key
+            
+            return pool_keys
+            
+        except Exception as e:
+            logger.error(f"Error fetching pool keys: {e}")
+            return None
+            
+    def get_associated_token_address(self, owner: Pubkey, mint: Pubkey) -> Pubkey:
+        """Dapatkan alamat Associated Token Account (ATA)"""
+        return get_associated_token_address(owner, mint)

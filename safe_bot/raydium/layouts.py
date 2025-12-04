@@ -1,7 +1,10 @@
 """
-Layout struktur data untuk Raydium
+Layout struktur data untuk Raydium dan Serum/OpenBook
 """
-from construct import Bytes, Int8ul, Int64ul, Int128ul, Struct, Padding, Array
+from construct import Bytes, Int8ul, Int64ul, BytesInteger, Struct, Padding, Array
+
+# Definisi custom untuk Int128ul (Unsigned Little Endian 128-bit)
+Int128ul = BytesInteger(16, swapped=True)
 
 # Layout untuk arahan Swap
 SWAP_LAYOUT = Struct(
@@ -11,7 +14,6 @@ SWAP_LAYOUT = Struct(
 )
 
 # Layout lengkap untuk AMM Info V4 (OpenBook/Serum based)
-# Diperbaharui untuk memasukkan alamat Vault
 AMM_INFO_LAYOUT_V4 = Struct(
     "status" / Int64ul,
     "nonce" / Int64ul,
@@ -65,4 +67,30 @@ AMM_INFO_LAYOUT_V4 = Struct(
     "client_order_id" / Int64ul,    # Client Order ID
     
     Padding(128) # Padding baki
+)
+
+# Layout untuk Serum/OpenBook Market V3
+MARKET_LAYOUT_V3 = Struct(
+    Padding(5), # Blob(5) "account flags"
+    "account_flags" / Bytes(4),
+    "own_address" / Bytes(32),
+    "vault_signer_nonce" / Int64ul,
+    "base_mint" / Bytes(32),
+    "quote_mint" / Bytes(32),
+    "base_vault" / Bytes(32),
+    "base_deposits_total" / Int64ul,
+    "base_fees_accrued" / Int64ul,
+    "quote_vault" / Bytes(32),
+    "quote_deposits_total" / Int64ul,
+    "quote_fees_accrued" / Int64ul,
+    "quote_dust_threshold" / Int64ul,
+    "request_queue" / Bytes(32),
+    "event_queue" / Bytes(32),
+    "bids" / Bytes(32),
+    "asks" / Bytes(32),
+    "base_lot_size" / Int64ul,
+    "quote_lot_size" / Int64ul,
+    "fee_rate_bps" / Int64ul,
+    "referrer_rebates_accrued" / Int64ul,
+    Padding(7)
 )

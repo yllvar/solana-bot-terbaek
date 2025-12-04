@@ -82,7 +82,12 @@ class SolanaSnipingBot:
             self.raydium_swap = RaydiumSwap(self.wallet.client, self.wallet)
             self.tx_builder = TransactionBuilder(self.wallet.client, self.wallet)
             self.price_tracker = PriceTracker(self.wallet.client, self.raydium_swap)
-            self.triggers = TradeTriggers(self.price_tracker, self.raydium_swap)
+            self.triggers = TradeTriggers(
+                self.price_tracker,
+                self.raydium_swap,
+                self.tx_builder,
+                self.wallet
+            )
             self.security = SecurityAnalyzer(self.wallet.client)
             
             # 4. Monitor
