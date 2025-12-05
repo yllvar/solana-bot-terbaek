@@ -12,6 +12,9 @@ base58>=2.1.1
 requests>=2.31.0
 colorama>=0.4.6
 
+# HTTP Client for API integrations (RugCheck, Jito)
+httpx>=0.25.0
+
 # Testing Requirements
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

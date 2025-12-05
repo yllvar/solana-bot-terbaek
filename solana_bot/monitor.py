@@ -1,5 +1,7 @@
 """
 Modul untuk monitor pool baharu di Raydium dan Auto Buy
+
+Enhanced with proper pool detection using pool_parser module.
 """
 import asyncio
 import logging
@@ -13,11 +15,13 @@ from solana.rpc.commitment import Confirmed
 from .raydium.swap import RaydiumSwap
 from .transaction import TransactionBuilder
 from .config import BotConfig
+from .pool_parser import RaydiumPoolParser, PoolInfo
+from .security import SecurityAnalyzer
 
 logger = logging.getLogger(__name__)
 
 class PoolMonitor:
-    """Kelas untuk monitor pool baharu di Raydium"""
+    """Enhanced Raydium pool monitor with proper pool detection"""
     
     def __init__(
         self,
@@ -26,7 +30,8 @@ class PoolMonitor:
         raydium_program_id: Pubkey,
         config: BotConfig,
         wallet_manager,
-        callback: Optional[Callable] = None
+        callback: Optional[Callable] = None,
+        security_analyzer: Optional[SecurityAnalyzer] = None
     ):
         self.rpc_endpoint = rpc_endpoint
         self.ws_endpoint = ws_endpoint
@@ -37,8 +42,20 @@ class PoolMonitor:
         self.client = AsyncClient(rpc_endpoint)
         self.is_monitoring = False
         
+        # Enhanced components
+        self.pool_parser = RaydiumPoolParser()
+        self.security = security_analyzer
+        
         self.raydium_swap = RaydiumSwap(self.client, self.wallet)
         self.tx_builder = TransactionBuilder(self.client, self.wallet)
+        
+        # Statistics
+        self.stats = {
+            'transactions_seen': 0,
+            'pools_detected': 0,
+            'pools_bought': 0,
+            'pools_skipped_security': 0
+        }
         
     async def start_monitoring(self):
         """Mula monitor pool baharu"""
@@ -186,122 +203,164 @@ class PoolMonitor:
             logger.error(f"❌ Auto Buy gagal: {e}")
 
     def _is_new_pool(self, result) -> bool:
-        """Check jika result adalah pool baharu"""
-        if hasattr(result, 'value') and result.value:
-            logs = result.value.logs if hasattr(result.value, 'logs') else []
-            logger.debug(f"🔎 Checking {len(logs)} log entries for pool initialization")
-            for log in logs:
-                if 'initialize' in log.lower() or 'create' in log.lower():
-                    logger.debug(f"✅ Found initialization keyword in log: {log[:100]}...")
-                    return True
-        return False
+        """
+        Check if result represents a new pool initialization.
+        
+        Uses pool_parser for accurate detection instead of naive keyword matching.
+        """
+        self.stats['transactions_seen'] += 1
+        
+        if not hasattr(result, 'value') or not result.value:
+            return False
+        
+        logs = result.value.logs if hasattr(result.value, 'logs') else []
+        
+        if not logs:
+            return False
+        
+        # Use pool_parser for accurate detection
+        # Check for proper initialize2 instruction, not just keywords
+        is_init = self.pool_parser.is_initialize_instruction(logs)
+        
+        if is_init:
+            # Double-check: verify it's actually an init log (type 0)
+            is_init = self.pool_parser.filter_init_logs_only(logs)
+        
+        if is_init:
+            logger.debug("✅ Detected pool initialization via pool_parser")
+        
+        return is_init
     
     async def _extract_pool_info(self, result) -> Optional[Dict[str, Any]]:
         """
-        Extract maklumat pool dari result log WebSocket
-        Cuba cari 'Program log: ray_log: ...' dan decode
+        Extract pool info using pool_parser module.
+        
+        Returns pool info dict or None if extraction fails.
         """
         try:
             if not hasattr(result, 'value'):
-                logger.debug("⚠️  Result has no 'value' attribute")
+                logger.debug("⚠️ Result has no 'value' attribute")
                 return None
-                
+            
             logs = result.value.logs
-            logger.debug(f"📋 Scanning {len(logs)} logs for ray_log data")
+            timestamp = asyncio.get_event_loop().time()
             
-            for i, log in enumerate(logs):
-                if "ray_log:" in log:
-                    logger.info(f"🎯 Found ray_log in log entry #{i}")
-                    # Format: "Program log: ray_log: <BASE64_DATA>"
-                    parts = log.split("ray_log: ")
-                    if len(parts) < 2:
-                        logger.warning(f"⚠️  ray_log format unexpected: {log[:100]}")
-                        continue
-                        
-                    b64_data = parts[1].strip()
-                    logger.debug(f"📦 Base64 data length: {len(b64_data)} chars")
-                    pool_data = self._decode_ray_log(b64_data)
-                    
-                    if pool_data:
-                        logger.info("✅ Successfully decoded ray_log data!")
-                        return pool_data
-                    else:
-                        logger.warning("⚠️  Failed to decode ray_log data")
+            # Use pool_parser for structured extraction
+            pool_info = self.pool_parser.parse_transaction_logs(logs, timestamp)
             
-            logger.debug("ℹ️  No ray_log found in logs")
-            return None
+            if pool_info:
+                self.stats['pools_detected'] += 1
+                logger.info(f"✅ Pool parsed successfully via pool_parser")
+                return pool_info.to_dict()
+            
+            # Fallback: try legacy extraction if pool_parser fails
+            logger.debug("⚠️ pool_parser extraction failed, trying legacy method")
+            return await self._extract_pool_info_legacy(logs, timestamp)
             
         except Exception as e:
             logger.error(f"❌ Error extracting pool info: {e}", exc_info=True)
             return None
-
-    def _decode_ray_log(self, b64_data: str) -> Optional[Dict[str, Any]]:
+    
+    async def _extract_pool_info_legacy(self, logs, timestamp) -> Optional[Dict[str, Any]]:
         """
-        Decode data ray_log (Base64) untuk dapatkan AMM ID
+        Legacy pool info extraction (fallback).
+        
+        Kept for compatibility but pool_parser should be preferred.
         """
         import base64
-        import struct
         from solders.pubkey import Pubkey
         
         try:
-            data = base64.b64decode(b64_data)
-            
-            # Semak panjang data. Log init biasanya panjang (sekitar 240+ bytes)
-            if len(data) < 100:
-                return None
+            for log in logs:
+                if "ray_log:" not in log:
+                    continue
                 
-            # Struktur Log Init (anggaran offset):
-            # u8 log_type (offset 0)
-            log_type = data[0]
-            
-            # Log Type 0 = Init
-            if log_type == 0:
-                # Offsets berdasarkan Raydium Rust SDK:
-                # log_type(1) + open_time(8) + quote_dec(1) + base_dec(1) + 
-                # quote_lot(8) + base_lot(8) + quote_amt(8) + base_amt(8) = 43 bytes
-                # Kemudian Pubkeys (32 bytes each):
-                # market(32) -> offset 43
-                # open_orders(32) -> offset 75
-                # target_orders(32) -> offset 107
-                # base_vault(32) -> offset 139
-                # quote_vault(32) -> offset 171
-                # withdraw_queue(32) -> offset 203
-                # lp_vault(32) -> offset 235
-                # amm_id(32) -> offset 267 <-- INI YANG KITA MAHU
-                # ...
+                parts = log.split("ray_log: ")
+                if len(parts) < 2:
+                    continue
                 
-                # Nota: Offset mungkin berbeza sedikit bergantung versi, 
-                # tapi urutan biasanya konsisten.
+                b64_data = parts[1].strip()
+                data = base64.b64decode(b64_data)
                 
-                # Mari cuba extract AMM ID di offset 267
-                amm_id_offset = 267
-                if len(data) >= amm_id_offset + 32:
-                    amm_id_bytes = data[amm_id_offset:amm_id_offset+32]
-                    amm_id = Pubkey.from_bytes(amm_id_bytes)
-                    
-                    # Extract Token Mints juga
-                    # lp_mint(32) -> 299
-                    # base_mint(32) -> 331
-                    # quote_mint(32) -> 363
-                    
+                if len(data) < 100 or data[0] != 0:  # type 0 = init
+                    continue
+                
+                # Try known offsets
+                if len(data) >= 395:
+                    amm_id = Pubkey.from_bytes(data[267:299])
                     base_mint = Pubkey.from_bytes(data[331:363])
                     quote_mint = Pubkey.from_bytes(data[363:395])
                     
                     return {
                         'pool_address': str(amm_id),
-                        'token_address': str(quote_mint), # Biasanya quote adalah token baru jika pair dengan SOL (Base)
+                        'token_address': str(quote_mint),
                         'base_mint': str(base_mint),
                         'quote_mint': str(quote_mint),
-                        'timestamp': asyncio.get_event_loop().time()
+                        'timestamp': timestamp
                     }
-                    
+            
             return None
             
         except Exception as e:
-            logger.error(f"Error decoding ray log: {e}")
+            logger.error(f"Legacy extraction failed: {e}")
             return None
     
+    async def _run_security_checks(self, pool_info: Dict[str, Any]) -> tuple[bool, list]:
+        """
+        Run security analysis on detected pool before buying.
+        
+        Returns (is_safe, warnings)
+        """
+        if not self.security:
+            logger.debug("ℹ️ Security analyzer not configured, skipping checks")
+            return True, []
+        
+        try:
+            token_mint = pool_info.get('token_address')
+            pool_address = pool_info.get('pool_address')
+            
+            if not token_mint:
+                return False, ["No token address in pool info"]
+            
+            logger.info(f"🔒 Running security checks for {token_mint[:16]}...")
+            
+            # Quick check first
+            is_safe, warnings = await self.security.quick_check(token_mint, pool_address)
+            
+            if not is_safe:
+                self.stats['pools_skipped_security'] += 1
+                logger.warning(f"⚠️ Token failed security check!")
+                for w in warnings:
+                    logger.warning(f"   {w}")
+            else:
+                logger.info(f"✅ Token passed security checks")
+            
+            return is_safe, warnings
+            
+        except Exception as e:
+            logger.error(f"Security check error: {e}")
+            return False, [f"Security check failed: {e}"]
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get monitoring statistics"""
+        return {
+            **self.stats,
+            'is_monitoring': self.is_monitoring
+        }
+    
     async def stop_monitoring(self):
-        """Hentikan monitoring"""
+        """Stop monitoring and cleanup"""
         self.is_monitoring = False
+        
+        # Log final stats
+        logger.info("📊 Monitoring Statistics:")
+        logger.info(f"   Transactions seen: {self.stats['transactions_seen']}")
+        logger.info(f"   Pools detected: {self.stats['pools_detected']}")
+        logger.info(f"   Pools bought: {self.stats['pools_bought']}")
+        logger.info(f"   Pools skipped (security): {self.stats['pools_skipped_security']}")
+        
+        # Cleanup
+        if self.security:
+            await self.security.close()
         await self.client.close()
+
