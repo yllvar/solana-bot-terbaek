@@ -8,106 +8,106 @@
 </p>
 
 <p align="center">
-  <strong>Advanced automated trading bot for Raydium DEX on Solana blockchain</strong><br>
-  Snipe new tokens instantly, auto-take profit, and protect yourself from rug-pulls with enhanced security!
+  <strong>Bot dagangan automatik canggih untuk Raydium DEX di rangkaian Solana</strong><br>
+  Beli token baharu dengan pantas, ambil keuntungan secara automatik, dan lindungi diri daripada rug-pull dengan keselamatan dipertingkat!
 </p>
 
 ---
 
-## 🆕 What's New - Enhanced Monitoring System
+## 🆕 Apa Yang Baru - Sistem Pemantauan Dipertingkat
 
-This bot features a **completely rewritten** pool detection and security analysis system:
+Bot ini mempunyai sistem pengesanan pool dan analisis keselamatan yang **ditulis semula sepenuhnya**:
 
-### ✨ Enhanced Pool Detection
-- **Proper `initialize2` instruction parsing** - No more false positives from naive keyword matching
-- **Structured `ray_log` decoding** - Accurate extraction of pool addresses, token mints, and vaults
-- **Multi-version support** - Works with Raydium V4 pools and handles layout variations
+### ✨ Pengesanan Pool Dipertingkat
+- **Penghuraian arahan `initialize2` yang betul** - Tiada lagi positif palsu daripada padanan kata kunci naif
+- **Penyahkodan `ray_log` berstruktur** - Pengekstrakan tepat alamat pool, token mint, dan vault
+- **Sokongan pelbagai versi** - Berfungsi dengan pool Raydium V4 dan mengendalikan variasi layout
 
-### 🔒 Advanced Security Analysis
-- **Real on-chain SPL Token parsing** - Actual mint/freeze authority verification (not placeholders!)
-- **RugCheck API integration** - Risk scoring, LP lock status, top holder analysis
-- **Automated safety checks** - Configurable thresholds before auto-buy
+### 🔒 Analisis Keselamatan Lanjutan
+- **Penghuraian SPL Token on-chain sebenar** - Pengesahan mint/freeze authority sebenar (bukan placeholder!)
+- **Integrasi API RugCheck** - Penilaian risiko, status kunci LP, analisis pemegang teratas
+- **Semakan keselamatan automatik** - Ambang boleh dikonfigurasi sebelum auto-buy
 
-### ⚡ MEV Protection Ready
-- **Jito bundle support** - Atomic transaction execution
-- **Priority tips** - Configurable tip amounts for faster inclusion
-- **Bypass mempool** - Protect your transactions from front-running
-
----
-
-## 📋 Table of Contents
-
-* [Features](#-features)
-* [Architecture](#-architecture)
-* [Requirements](#-requirements)
-* [Installation](#-installation)
-* [Configuration](#-configuration)
-* [Usage](#-usage)
-* [Security](#-security)
-* [FAQ](#-faq)
-* [Disclaimer](#-disclaimer)
+### ⚡ Sedia untuk Perlindungan MEV
+- **Sokongan bundle Jito** - Pelaksanaan transaksi atomik
+- **Tip keutamaan** - Amaun tip boleh dikonfigurasi untuk kemasukan lebih pantas
+- **Bypass mempool** - Lindungi transaksi anda daripada front-running
 
 ---
 
-## ⭐ Features
+## 📋 Kandungan
+
+* [Ciri-ciri](#-ciri-ciri)
+* [Seni Bina](#-seni-bina)
+* [Keperluan](#-keperluan)
+* [Pemasangan](#-pemasangan)
+* [Konfigurasi](#-konfigurasi)
+* [Penggunaan](#-penggunaan)
+* [Keselamatan](#-keselamatan)
+* [Soalan Lazim](#-soalan-lazim)
+* [Penafian](#-penafian)
+
+---
+
+## ⭐ Ciri-ciri
 
 ### 🎯 Token Sniping
-- Monitor Raydium for new pool initializations in real-time
-- Proper `initialize2` instruction detection (not keyword matching)
-- Buy tokens instantly when liquidity is added
+- Pantau Raydium untuk inisialisasi pool baharu secara masa nyata
+- Pengesanan arahan `initialize2` yang betul (bukan padanan kata kunci)
+- Beli token serta-merta apabila kecairan ditambah
 
 ### 💰 Auto Take Profit
-- Set profit targets (e.g., 50%, 100%, 200%)
-- Automatic selling when price reaches target
-- Trailing stop-loss support
+- Tetapkan sasaran keuntungan (contoh: 50%, 100%, 200%)
+- Jualan automatik apabila harga mencapai sasaran
+- Sokongan trailing stop-loss
 
-### 🛡️ Rug-Pull Protection
-| Check | Description |
-|-------|-------------|
-| **Mint Authority** | Real on-chain parsing of SPL Token Mint account |
-| **Freeze Authority** | Detects if issuer can freeze your tokens |
-| **Liquidity** | Actual vault balance calculation |
-| **RugCheck Score** | API integration for comprehensive analysis |
-| **Top Holders** | Concentration analysis from RugCheck |
+### 🛡️ Perlindungan Rug-Pull
+| Semakan | Penerangan |
+|---------|------------|
+| **Mint Authority** | Penghuraian on-chain sebenar akaun SPL Token Mint |
+| **Freeze Authority** | Mengesan jika penerbit boleh membekukan token anda |
+| **Kecairan** | Pengiraan baki vault sebenar |
+| **Skor RugCheck** | Integrasi API untuk analisis menyeluruh |
+| **Pemegang Teratas** | Analisis kepekatan daripada RugCheck |
 
-### 📊 Monitoring Statistics
-- Transactions seen
-- Pools detected
-- Pools bought
-- Pools skipped (security)
+### 📊 Statistik Pemantauan
+- Transaksi dilihat
+- Pool dikesan
+- Pool dibeli
+- Pool dilangkau (keselamatan)
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Seni Bina
 
 ```
 solana_bot/
-├── monitor.py          # Enhanced pool monitor with proper detection
-├── pool_parser.py      # 🆕 Raydium transaction parser (initialize2)
-├── security.py         # Real security analysis (not placeholders!)
-├── rugcheck_client.py  # 🆕 RugCheck API integration
-├── jito_client.py      # 🆕 MEV protection with Jito bundles
-├── price_tracker.py    # Real-time price monitoring
-├── triggers.py         # Take profit / Stop loss logic
-├── wallet.py           # Wallet management
-├── config.py           # Bot configuration
-├── transaction.py      # Transaction building
+├── monitor.py          # Pemantau pool dipertingkat dengan pengesanan betul
+├── pool_parser.py      # 🆕 Penghurai transaksi Raydium (initialize2)
+├── security.py         # Analisis keselamatan sebenar (bukan placeholder!)
+├── rugcheck_client.py  # 🆕 Integrasi API RugCheck
+├── jito_client.py      # 🆕 Perlindungan MEV dengan bundle Jito
+├── price_tracker.py    # Pemantauan harga masa nyata
+├── triggers.py         # Logik Take profit / Stop loss
+├── wallet.py           # Pengurusan dompet
+├── config.py           # Konfigurasi bot
+├── transaction.py      # Pembinaan transaksi
 └── raydium/
-    ├── swap.py         # Swap instruction builder
-    └── layouts.py      # Raydium account layouts
+    ├── swap.py         # Pembina arahan swap
+    └── layouts.py      # Layout akaun Raydium
 ```
 
 ---
 
-## 💻 Requirements
+## 💻 Keperluan
 
-### System Requirements
-- **OS:** Windows 10/11, macOS 10.15+, or Linux (Ubuntu 20.04+)
-- **Python:** 3.11 or higher
+### Keperluan Sistem
+- **OS:** Windows 10/11, macOS 10.15+, atau Linux (Ubuntu 20.04+)
+- **Python:** 3.11 atau lebih tinggi
 - **RAM:** Minimum 4GB
-- **Internet:** Stable connection
+- **Internet:** Sambungan stabil
 
-### Dependencies
+### Kebergantungan
 ```
 solana>=0.30.0
 solders>=0.18.0
@@ -118,38 +118,38 @@ construct>=2.10.0
 base58>=2.1.1
 ```
 
-### Optional API Keys
-| Service | Purpose | Pricing |
-|---------|---------|---------|
-| **RugCheck** | Token security analysis | Free tier available |
-| **Helius** | Geyser streaming (faster) | $49+/mo |
+### Kunci API Pilihan
+| Perkhidmatan | Tujuan | Harga |
+|--------------|--------|-------|
+| **RugCheck** | Analisis keselamatan token | Tier percuma tersedia |
+| **Helius** | Streaming Geyser (lebih pantas) | $49+/bulan |
 
 ---
 
-## 📥 Installation
+## 📥 Pemasangan
 
-### Quick Start
+### Mula Pantas
 
 ```bash
-# Clone the repository
+# Clone repositori
 git clone git@github.com:yllvar/solana-bot-terbaek.git
 cd solana-bot-terbaek
 
-# Create virtual environment
+# Cipta virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Pasang kebergantungan
 pip install -r requirements_safe.txt
 
-# Run the bot
+# Jalankan bot
 python main.py
 ```
 
-### Windows Installation
+### Pemasangan Windows
 
-1. **Install Python 3.11+** from [python.org](https://www.python.org/downloads/)
-   - ⚠️ Check "Add python.exe to PATH"
+1. **Pasang Python 3.11+** dari [python.org](https://www.python.org/downloads/)
+   - ⚠️ Tandakan "Add python.exe to PATH"
    
 2. **Clone & Setup:**
    ```bash
@@ -160,18 +160,18 @@ python main.py
    pip install -r requirements_safe.txt
    ```
 
-3. **Run:**
+3. **Jalankan:**
    ```bash
    python main.py
    ```
 
-### Mac/Linux Installation
+### Pemasangan Mac/Linux
 
 ```bash
-# Install Python (Mac)
+# Pasang Python (Mac)
 brew install python@3.11
 
-# Install Python (Ubuntu/Debian)
+# Pasang Python (Ubuntu/Debian)
 sudo apt update && sudo apt install python3.11 python3-pip
 
 # Clone & Setup
@@ -181,15 +181,15 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements_safe.txt
 
-# Run
+# Jalankan
 python3 main.py
 ```
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Konfigurasi
 
-### Bot Configuration (`bot_config.json`)
+### Konfigurasi Bot (`bot_config.json`)
 
 ```json
 {
@@ -205,52 +205,52 @@ python3 main.py
 }
 ```
 
-### Security Configuration
+### Konfigurasi Keselamatan
 
 ```python
 from solana_bot.security import SecurityAnalyzer
 
 security = SecurityAnalyzer(
     rpc_client=client,
-    rugcheck_api_key="your_api_key",  # Optional
-    min_liquidity_sol=5.0,            # Minimum 5 SOL liquidity
-    max_top_holder_pct=20.0,          # Max 20% for top holder
-    max_risk_score=50                  # RugCheck threshold
+    rugcheck_api_key="kunci_api_anda",  # Pilihan
+    min_liquidity_sol=5.0,               # Minimum 5 SOL kecairan
+    max_top_holder_pct=20.0,             # Max 20% untuk pemegang teratas
+    max_risk_score=50                     # Ambang RugCheck
 )
 ```
 
-### Configuration Options
+### Pilihan Konfigurasi
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `buy_amount` | Amount in SOL to spend per buy | `0.1` |
-| `buy_delay` | Seconds to wait after pool detection | `0` |
-| `take_profit_percent` | Profit target to auto-sell | `100` |
-| `stop_loss_percent` | Loss threshold to auto-sell | `50` |
-| `slippage_bps` | Slippage tolerance (basis points) | `100` |
-| `use_jito` | Enable Jito bundles for MEV protection | `false` |
-| `min_liquidity_sol` | Minimum pool liquidity required | `5.0` |
-| `max_risk_score` | Maximum RugCheck score to allow | `50` |
+| Parameter | Penerangan | Lalai |
+|-----------|------------|-------|
+| `buy_amount` | Jumlah dalam SOL untuk dibeli | `0.1` |
+| `buy_delay` | Saat menunggu selepas pengesanan pool | `0` |
+| `take_profit_percent` | Sasaran keuntungan untuk auto-sell | `100` |
+| `stop_loss_percent` | Ambang kerugian untuk auto-sell | `50` |
+| `slippage_bps` | Toleransi slippage (basis points) | `100` |
+| `use_jito` | Aktifkan bundle Jito untuk perlindungan MEV | `false` |
+| `min_liquidity_sol` | Kecairan pool minimum diperlukan | `5.0` |
+| `max_risk_score` | Skor RugCheck maksimum dibenarkan | `50` |
 
 ---
 
-## 🎮 Usage
+## 🎮 Penggunaan
 
-### Running the Bot
+### Menjalankan Bot
 
 ```bash
-# Activate virtual environment
+# Aktifkan virtual environment
 source venv/bin/activate  # Mac/Linux
 venv\Scripts\activate     # Windows
 
-# Run main bot
+# Jalankan bot utama
 python main.py
 
-# Or use CLI
+# Atau guna CLI
 python solana_bot_cli.py
 ```
 
-### What You'll See
+### Apa Yang Anda Akan Lihat
 
 ```
 📝 Log file: bot_20251205_190000.log
@@ -272,15 +272,15 @@ python solana_bot_cli.py
 ✅ Auto Buy BERJAYA! TX: xxx...
 ```
 
-### Check Balance
+### Semak Baki
 
 ```bash
 python checkbalance.py
 ```
 
-### Stop the Bot
+### Hentikan Bot
 
-Press `Ctrl + C` to stop safely. You'll see final statistics:
+Tekan `Ctrl + C` untuk berhenti dengan selamat. Anda akan lihat statistik akhir:
 
 ```
 📊 Monitoring Statistics:
@@ -292,109 +292,109 @@ Press `Ctrl + C` to stop safely. You'll see final statistics:
 
 ---
 
-## 🔒 Security
+## 🔒 Keselamatan
 
-### ⚠️ Important Warnings
+### ⚠️ Amaran Penting
 
-1. **Private Key Safety:**
-   - NEVER share your private key
-   - Bot runs locally - keys are not sent anywhere
-   - Use a dedicated wallet for the bot
+1. **Keselamatan Private Key:**
+   - JANGAN SESEKALI kongsi private key anda
+   - Bot berjalan secara lokal - kunci tidak dihantar ke mana-mana
+   - Guna dompet khusus untuk bot
 
-2. **Use Separate Wallet:**
-   - Create a new wallet specifically for trading
-   - Only deposit what you can afford to lose
-   - Start with small amounts (0.1 SOL)
+2. **Guna Dompet Berasingan:**
+   - Cipta dompet baharu khusus untuk dagangan
+   - Hanya deposit jumlah yang anda sanggup rugi
+   - Mulakan dengan jumlah kecil (0.1 SOL)
 
-3. **Security Checks:**
-   - Always keep `CHECK RUG` enabled
-   - Review RugCheck reports before manual trades
-   - No security check is 100% foolproof
+3. **Semakan Keselamatan:**
+   - Sentiasa aktifkan `CHECK RUG`
+   - Semak laporan RugCheck sebelum dagangan manual
+   - Tiada semakan keselamatan yang 100% pasti
 
-### 🔐 Protected Files
+### 🔐 Fail Dilindungi
 
-These files are in `.gitignore` and won't be pushed:
-- `snip_token.txt` - Token configurations
-- `LOG` - Log files
-- `data/` - Runtime data
-- `*.key`, `*.pem` - Private keys
-- `.env` - Environment variables
-
----
-
-## ❓ FAQ
-
-### Q: Bot shows "python is not recognized"
-**A:** Python not in PATH. Reinstall Python and check "Add to PATH".
-
-### Q: Bot detects pool but doesn't buy
-**A:** Check if security checks are failing. Review logs for warnings.
-
-### Q: How do I get a RugCheck API key?
-**A:** Sign up at [rugcheck.xyz](https://rugcheck.xyz) and generate a key from your dashboard.
-
-### Q: What's the minimum SOL needed?
-**A:** Minimum 0.1 SOL for testing, 1-2 SOL recommended for real trading.
-
-### Q: Can I run multiple bots?
-**A:** Yes, use different wallets and config files for each.
+Fail-fail ini ada dalam `.gitignore` dan tidak akan di-push:
+- `snip_token.txt` - Konfigurasi token
+- `LOG` - Fail log
+- `data/` - Data runtime
+- `*.key`, `*.pem` - Kunci peribadi
+- `.env` - Pembolehubah persekitaran
 
 ---
 
-## ⚖️ Disclaimer
+## ❓ Soalan Lazim
 
-### 📢 Important - Please Read
+### S: Bot menunjukkan "python is not recognized"
+**J:** Python tiada dalam PATH. Pasang semula Python dan tandakan "Add to PATH".
 
-1. **Not Financial Advice:**
-   - This bot is an automation tool only
-   - Not investment or financial advice
-   - You are fully responsible for your trading decisions
+### S: Bot mengesan pool tetapi tidak membeli
+**J:** Semak jika semakan keselamatan gagal. Semak log untuk amaran.
 
-2. **Trading Risks:**
-   - Cryptocurrency trading involves high risk
-   - You may lose all invested capital
-   - Token prices can go to zero (rug-pull)
-   - No guarantee of profits
+### S: Bagaimana mendapatkan kunci API RugCheck?
+**J:** Daftar di [rugcheck.xyz](https://rugcheck.xyz) dan jana kunci dari dashboard anda.
 
-3. **No Warranties:**
-   - Bot provided "AS IS"
-   - No guarantee it will work without errors
-   - No guarantee of profits or performance
-   - Developer not responsible for any losses
+### S: Berapa minimum SOL diperlukan?
+**J:** Minimum 0.1 SOL untuk ujian, 1-2 SOL disarankan untuk dagangan sebenar.
 
-4. **Not Affiliated:**
-   - NOT affiliated with Solana Foundation or Solana Labs
-   - Community project, not for profit
-   - Use at your own risk
-
-5. **Unaudited Code:**
-   - Code has not been audited by third parties
-   - May contain bugs or security vulnerabilities
-   - Always review code before using
-
-6. **Legal Compliance:**
-   - Ensure crypto trading is legal in your jurisdiction
-   - Comply with all local laws and regulations
-   - Pay applicable taxes
+### S: Boleh jalankan pelbagai bot?
+**J:** Ya, guna dompet dan fail konfigurasi berbeza untuk setiap satu.
 
 ---
 
-## 📞 Support
+## ⚖️ Penafian
 
-1. Check [FAQ](#-faq) first
-2. Read `CODEBASE_INDEX.md` for detailed documentation
-3. Check `QUICKSTART.md` for quick start guide
-4. Review `LOGGING_GUIDE.md` for debugging
+### 📢 Penting - Sila Baca
+
+1. **Bukan Nasihat Kewangan:**
+   - Bot ini adalah alat automasi sahaja
+   - Bukan nasihat pelaburan atau kewangan
+   - Anda bertanggungjawab sepenuhnya atas keputusan dagangan anda
+
+2. **Risiko Dagangan:**
+   - Dagangan cryptocurrency melibatkan risiko tinggi
+   - Anda mungkin kehilangan semua modal yang dilaburkan
+   - Harga token boleh turun ke sifar (rug-pull)
+   - Tiada jaminan keuntungan
+
+3. **Tiada Waranti:**
+   - Bot disediakan "SEBAGAIMANA ADANYA"
+   - Tiada jaminan ia akan berfungsi tanpa ralat
+   - Tiada jaminan keuntungan atau prestasi
+   - Pembangun tidak bertanggungjawab atas sebarang kerugian
+
+4. **Tidak Berkaitan:**
+   - TIDAK berkaitan dengan Solana Foundation atau Solana Labs
+   - Projek komuniti, bukan untuk keuntungan
+   - Guna atas risiko anda sendiri
+
+5. **Kod Tidak Diaudit:**
+   - Kod belum diaudit oleh pihak ketiga
+   - Mungkin ada bug atau kelemahan keselamatan
+   - Sentiasa semak kod sebelum guna
+
+6. **Pematuhan Undang-undang:**
+   - Pastikan dagangan crypto adalah sah di negara anda
+   - Patuhi semua undang-undang dan peraturan tempatan
+   - Bayar cukai jika berkenaan
 
 ---
 
-## 📄 License
+## 📞 Sokongan
 
-This project is open-source software. Use responsibly.
+1. Semak [Soalan Lazim](#-soalan-lazim) dahulu
+2. Baca `CODEBASE_INDEX.md` untuk dokumentasi terperinci
+3. Semak `QUICKSTART.md` untuk panduan mula pantas
+4. Semak `LOGGING_GUIDE.md` untuk debugging
+
+---
+
+## 📄 Lesen
+
+Projek ini adalah perisian sumber terbuka. Gunakan dengan bertanggungjawab.
 
 ---
 
 <p align="center">
-  <strong>⚠️ REMEMBER: Never invest more than you can afford to lose! ⚠️</strong><br>
-  <em>Happy trading and good luck! 🚀</em>
+  <strong>⚠️ INGAT: Jangan laburkan lebih daripada yang anda sanggup rugi! ⚠️</strong><br>
+  <em>Selamat berdagang dan semoga beruntung! 🚀</em>
 </p>
