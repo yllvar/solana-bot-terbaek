@@ -5,7 +5,9 @@ This module handles parsing of Raydium AMM initialize2 transactions
 to accurately extract pool information for new pool detection.
 """
 import base64
+import json
 import logging
+import requests
 import struct
 from dataclasses import dataclass
 from enum import Enum
@@ -127,22 +129,37 @@ class RaydiumPoolParser:
     def parse_transaction_logs(
         self,
         logs: List[str],
-        timestamp: float
+        timestamp: float,
+        signature: str = None,
+        client = None,
+        force_cpmm: bool = False
     ) -> Optional[PoolInfo]:
         """
         Parse transaction logs to detect pool initialization.
         
-        This method looks for "ray_log" entries in logs and decodes them.
-        It's the primary method for WebSocket-based detection.
+        Supports both V4 AMM (ray_log) and CPMM pool creation.
         
         Args:
             logs: List of log strings from transaction
             timestamp: Unix timestamp of detection
+            signature: Transaction signature (for CPMM parsing)
+            client: RPC client (for CPMM parsing)
+            force_cpmm: Force CPMM parsing (used when detection already confirmed CPMM)
             
         Returns:
             PoolInfo if this is a pool initialization, None otherwise
         """
         try:
+            # First check if this is a CPMM transaction
+            is_cpmm = any("Program CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C invoke" in log for log in logs) or force_cpmm
+            
+            logger.debug(f"Parsing transaction logs: is_cpmm={is_cpmm}, force_cpmm={force_cpmm}, has_signature={signature is not None}, has_client={client is not None}")
+            
+            if is_cpmm and signature and client:
+                logger.debug("Detected CPMM program invocation - attempting full transaction parsing")
+                return self._parse_cpmm_pool_creation_full(logs, timestamp, signature, client)
+            
+            # Otherwise, try V4 parsing
             for log in logs:
                 # Check for Raydium program invocation
                 if "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 invoke" in log:
@@ -155,6 +172,7 @@ class RaydiumPoolParser:
                     if pool_info:
                         return pool_info
             
+            logger.debug("No pool information found in transaction logs")
             return None
             
         except Exception as e:
@@ -368,8 +386,7 @@ class RaydiumPoolParser:
         """
         Check if transaction logs indicate a pool initialization.
         
-        More accurate than simple keyword matching - checks for
-        both program invocation and success.
+        Supports both V4 AMM and CPMM pool creation detection.
         
         Args:
             logs: Transaction log strings
@@ -378,38 +395,250 @@ class RaydiumPoolParser:
             True if this appears to be a pool initialization
         """
         has_raydium_invoke = False
+        has_cpmm_invoke = False
         has_init_log = False
+        has_cpmm_init = False
         has_success = False
+        program_id = None
         
         for log in logs:
             # Check for Raydium V4 program invocation
             if "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 invoke" in log:
                 has_raydium_invoke = True
+                program_id = "v4"
             
-            # Check for ray_log (indicates pool operation)
+            # Check for CPMM program invocation
+            if "Program CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C invoke" in log:
+                has_cpmm_invoke = True
+                program_id = "cpmm"
+            
+            # Check for ray_log (V4 indicates pool operation)
             if "ray_log:" in log:
                 has_init_log = True
             
-            # Check for program success (not just invocation)
-            if "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 success" in log:
+            # Check for CPMM Initialize instruction
+            if "InitializeCpmm" in log or "Instruction: Initialize" in log:
+                has_cpmm_init = True
+            
+            # Check for program success
+            if program_id == "v4" and "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 success" in log:
+                has_success = True
+            elif program_id == "cpmm" and "Program CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C success" in log:
                 has_success = True
         
-        # All conditions must be met
-        result = has_raydium_invoke and has_init_log and has_success
+        # Check V4 conditions
+        v4_result = has_raydium_invoke and has_init_log and has_success
+        
+        # Check CPMM conditions
+        cpmm_result = has_cpmm_invoke and has_cpmm_init and has_success
+        
+        result = v4_result or cpmm_result
         
         if result:
-            logger.debug("✅ Transaction appears to be pool initialization")
-        elif has_raydium_invoke:
-            logger.debug("⚠️ Raydium tx but not pool init (missing ray_log or success)")
-        
-        return result
-    
+            logger.debug(f"✅ Transaction appears to be pool initialization ({program_id})")
+    def _parse_cpmm_pool_creation_full(
+        self,
+        logs: List[str],
+        timestamp: float,
+        signature: str,
+        client,
+    ) -> Optional[PoolInfo]:
+        """
+        Parse CPMM pool creation by fetching full transaction data and parsing
+        instruction accounts using plain JSON-RPC (no solders RPC enums).
+
+        Args:
+            logs: Transaction logs
+            timestamp: Detection timestamp
+            signature: Transaction signature
+            client: RPC client (we only use it to infer endpoint, if possible)
+
+        Returns:
+            PoolInfo if parsing successful, None otherwise
+        """
+        try:
+            logger.info(
+                f"🔍 Fetching full transaction data for CPMM parsing: {signature[:16]}..."
+            )
+
+            # Try to infer RPC endpoint URL from the AsyncClient, otherwise
+            # fall back to the default mainnet endpoint.
+            rpc_url = getattr(
+                getattr(client, "_provider", None),
+                "endpoint_uri",
+                "https://api.mainnet-beta.solana.com",
+            )
+
+            # Build JSON-RPC request for getTransaction with jsonParsed encoding
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "getTransaction",
+                "params": [
+                    signature,
+                    {
+                        "encoding": "jsonParsed",
+                        "maxSupportedTransactionVersion": 0,
+                    },
+                ],
+            }
+
+            logger.debug(f"Fetching transaction via JSON-RPC from {rpc_url}")
+            resp = requests.post(rpc_url, json=payload, timeout=10)
+
+            if resp.status_code != 200:
+                logger.warning(
+                    f"getTransaction HTTP {resp.status_code} for {signature}"
+                )
+                return None
+
+            data = resp.json()
+            tx_result = data.get("result")
+            if not tx_result:
+                logger.warning(f"getTransaction returned no result for {signature}")
+                return None
+
+            # Extract message + account keys
+            tx = tx_result.get("transaction")
+            if not tx:
+                logger.warning(f"Transaction object missing in result for {signature}")
+                return None
+
+            message = tx.get("message", {})
+            account_keys_raw = message.get("accountKeys", [])
+            if not account_keys_raw:
+                logger.warning(f"No accountKeys in transaction for {signature}")
+                return None
+
+            # accountKeys can be strings or dicts with "pubkey"
+            account_keys: List[str] = []
+            for k in account_keys_raw:
+                if isinstance(k, dict):
+                    account_keys.append(k.get("pubkey", ""))
+                else:
+                    account_keys.append(str(k))
+
+            logger.debug(
+                f"Transaction has {len(account_keys)} account keys for {signature}"
+            )
+
+            # Instructions may be compiled (programIdIndex) or parsed.
+            instructions = message.get("instructions", [])
+            logger.debug(
+                f"Transaction has {len(instructions)} top-level instructions for {signature}"
+            )
+
+            RAYDIUM_CP = self.RAYDIUM_CP_SWAP_PROGRAM
+            for i, ix in enumerate(instructions):
+                logger.debug(f"Checking instruction {i} in transaction {signature}")
+
+                program_id = None
+
+                # Compiled instruction: programIdIndex + accounts
+                if "programIdIndex" in ix:
+                    idx = ix.get("programIdIndex")
+                    if isinstance(idx, int) and 0 <= idx < len(account_keys):
+                        program_id = account_keys[idx]
+                # Parsed instruction: programId as string
+                elif "programId" in ix:
+                    program_id = ix.get("programId")
+
+                logger.debug(f"Instruction {i} program_id: {program_id}")
+
+                if program_id != RAYDIUM_CP:
+                    continue
+
+                logger.info(
+                    f"✅ Found CPMM program instruction in tx {signature} - parsing accounts..."
+                )
+
+                accounts_idx = ix.get("accounts", [])
+                if not isinstance(accounts_idx, list) or not accounts_idx:
+                    logger.warning(
+                        f"CPMM instruction {i} has no accounts list in tx {signature}"
+                    )
+                    continue
+
+                # Map indices to actual account pubkeys
+                accounts: List[str] = []
+                for ai in accounts_idx:
+                    if isinstance(ai, int) and 0 <= ai < len(account_keys):
+                        accounts.append(account_keys[ai])
+                    else:
+                        accounts.append("")
+
+                logger.debug(
+                    f"CPMM instruction {i} has {len(accounts)} resolved accounts"
+                )
+
+                if len(accounts) < 12:
+                    logger.warning(
+                        f"CPMM instruction has insufficient accounts ({len(accounts)}) for tx {signature}"
+                    )
+                    continue
+
+                # Approximate CPMM Initialize layout (to be refined with real tx data):
+                # 0: creator
+                # 1: amm_config
+                # 2: authority
+                # 3: pool_state (pool address)
+                # 4: token_0_mint (base)
+                # 5: token_1_mint (quote)
+                # 6: lp_mint
+                # 10: token_0_vault
+                # 11: token_1_vault
+
+                pool_address = accounts[3]
+                base_mint = accounts[4]
+                quote_mint = accounts[5]
+                lp_mint = accounts[6]
+                base_vault = accounts[10]
+                quote_vault = accounts[11]
+
+                logger.debug(f"Extracted pool_address: {pool_address}")
+                logger.debug(f"Extracted base_mint: {base_mint}")
+                logger.debug(f"Extracted quote_mint: {quote_mint}")
+
+                pool_info = PoolInfo(
+                    pool_address=pool_address,
+                    base_mint=base_mint,
+                    quote_mint=quote_mint,
+                    base_vault=base_vault,
+                    quote_vault=quote_vault,
+                    lp_mint=lp_mint,
+                    open_orders="",  # CPMM doesn't use Serum orders
+                    market_id="",    # CPMM doesn't use Serum market
+                    version=PoolVersion.CP_SWAP,
+                    timestamp=timestamp,
+                )
+
+                logger.info(f"✅ Successfully parsed CPMM pool: {pool_address}")
+                logger.info(f"   Base Token: {base_mint}")
+                logger.info(f"   Quote Token: {quote_mint}")
+
+                return pool_info
+
+            logger.warning(f"No CPMM Initialize instruction found in tx {signature}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error in full CPMM parsing: {e}")
+            return None
+
     def filter_init_logs_only(self, logs: List[str]) -> bool:
         """
         Filter to only detect actual initialization transactions.
         
-        Distinguishes from regular swaps, deposits, etc.
+        Supports both V4 (ray_log) and CPMM initialization.
         """
+        # Check for CPMM initialization - look for CPMM program invocation AND initialize instruction
+        has_cpmm = any("Program CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C invoke" in log for log in logs)
+        has_cpmm_init = any("Instruction: Initialize" in log or "InitializeCpmm" in log for log in logs)
+        
+        if has_cpmm and has_cpmm_init:
+            return True
+        
+        # Check for V4 ray_log initialization
         for log in logs:
             if "ray_log:" in log:
                 # Decode and check log type

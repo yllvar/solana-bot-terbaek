@@ -14,14 +14,15 @@
 
 ---
 
-## 🆕 Apa Yang Baru - Sistem Pemantauan Dipertingkat
+## 🆕 Apa Yang Baru - Sokongan CPMM & Pengesanan Pool Dipertingkat
 
-Bot ini mempunyai sistem pengesanan pool dan analisis keselamatan yang **ditulis semula sepenuhnya**:
+Bot ini mempunyai sistem pengesanan pool dan analisis keselamatan yang **ditulis semula sepenuhnya** dengan **sokongan CPMM**:
 
 ### ✨ Pengesanan Pool Dipertingkat
 - **Penghuraian arahan `initialize2` yang betul** - Tiada lagi positif palsu daripada padanan kata kunci naif
 - **Penyahkodan `ray_log` berstruktur** - Pengekstrakan tepat alamat pool, token mint, dan vault
-- **Sokongan pelbagai versi** - Berfungsi dengan pool Raydium V4 dan mengendalikan variasi layout
+- **Sokongan pelbagai versi** - Berfungsi dengan pool Raydium V4 dan CPMM
+- **🆕 Sokongan CPMM lengkap** - Pengesanan pool CPMM dengan penghuraian transaksi penuh
 
 ### 🔒 Analisis Keselamatan Lanjutan
 - **Penghuraian SPL Token on-chain sebenar** - Pengesahan mint/freeze authority sebenar (bukan placeholder!)
@@ -54,7 +55,14 @@ Bot ini mempunyai sistem pengesanan pool dan analisis keselamatan yang **ditulis
 ### 🎯 Token Sniping
 - Pantau Raydium untuk inisialisasi pool baharu secara masa nyata
 - Pengesanan arahan `initialize2` yang betul (bukan padanan kata kunci)
+- **🆕 Sokongan CPMM penuh** - Pengesanan pool CPMM dengan penghuraian transaksi JSON-RPC
 - Beli token serta-merta apabila kecairan ditambah
+
+### 🔄 Sokongan CPMM (Concentrated Liquidity)
+- **Pengesanan Automatik** - Kenal pasti transaksi CPMM secara masa nyata
+- **Penghuraian JSON-RPC** - Ambil data transaksi penuh tanpa pergantungan `solders.rpc.enums`
+- **Pengekstrakan Tepat** - Dapatkan alamat pool, token mint, dan vault daripada arahan Initialize
+- **Log Terperinci** - Jejaki proses penghuraian untuk debugging dan pengesahan
 
 ### 💰 Auto Take Profit
 - Tetapkan sasaran keuntungan (contoh: 50%, 100%, 200%)
@@ -83,7 +91,7 @@ Bot ini mempunyai sistem pengesanan pool dan analisis keselamatan yang **ditulis
 ```
 solana_bot/
 ├── monitor.py          # Pemantau pool dipertingkat dengan pengesanan betul
-├── pool_parser.py      # 🆕 Penghurai transaksi Raydium (initialize2)
+├── pool_parser.py      # 🆕 Penghurai transaksi Raydium (V4 & CPMM)
 ├── security.py         # Analisis keselamatan sebenar (bukan placeholder!)
 ├── rugcheck_client.py  # 🆕 Integrasi API RugCheck
 ├── jito_client.py      # 🆕 Perlindungan MEV dengan bundle Jito
@@ -95,6 +103,18 @@ solana_bot/
 └── raydium/
     ├── swap.py         # Pembina arahan swap
     └── layouts.py      # Layout akaun Raydium
+
+scripts/                # 🆕 Skrip utiliti
+├── checkbalance.py     # Semak baki dompet
+├── getwallet.py        # Jana dompet baharu
+├── loadkey.py          # Muat kunci dompet
+└── symbol.py           # Utiliti simbol
+
+logs/                   # 🆕 Direktori log tersusun
+├── bot_*.log          # Log bot utama
+└── market_scanning_*.log # Log pemantauan pasaran
+
+logs_archive/           # Arkib log lama
 ```
 
 ---
@@ -116,6 +136,7 @@ aiohttp>=3.9.0
 httpx>=0.25.0
 construct>=2.10.0
 base58>=2.1.1
+requests>=2.31.0      # 🆕 Untuk penghuraian CPMM
 ```
 
 ### Kunci API Pilihan
@@ -253,7 +274,7 @@ python solana_bot_cli.py
 ### Apa Yang Anda Akan Lihat
 
 ```
-📝 Log file: bot_20251205_190000.log
+📝 Log file: logs/bot_20251205_190000.log
 🔍 Memulakan pemantauan pool baharu...
 📡 Connecting to WebSocket: wss://api.mainnet-beta.solana.com
 🎯 Monitoring Raydium Program: 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8
@@ -263,7 +284,7 @@ python solana_bot_cli.py
 💓 Heartbeat #1 - Bot masih aktif dan memantau...
 
 🆕 Potential new pool detected! Extracting info...
-✅ Pool parsed successfully via pool_parser
+✅ Pool parsed successfully via pool_parser (V4/CPMM)
    Token: ABC123...
    Pool: XYZ789...
 🔒 Running security checks for ABC123...

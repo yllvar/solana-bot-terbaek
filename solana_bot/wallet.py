@@ -36,8 +36,31 @@ class WalletManager:
             True jika berjaya, False jika gagal
         """
         try:
+            # Clean the input
+            private_key_bs58 = private_key_bs58.strip()
+            
+            # If input is too long, try to extract a valid private key
+            if len(private_key_bs58) > 88:  # Standard Solana private key is ~88 chars
+                logger.warning(f"Input too long ({len(private_key_bs58)} chars), trying to extract valid key")
+                # Try first 88 characters
+                candidate = private_key_bs58[:88]
+                try:
+                    test_decode = base58.b58decode(candidate)
+                    if len(test_decode) == 64:
+                        logger.info("✅ Extracted valid private key from input")
+                        private_key_bs58 = candidate
+                    else:
+                        return False
+                except:
+                    return False
+            
             # Decode Base58 private key
             private_key_bytes = base58.b58decode(private_key_bs58)
+            
+            # Validate length (should be 64 bytes for full keypair)
+            if len(private_key_bytes) != 64:
+                logger.error(f"❌ Invalid private key length: {len(private_key_bytes)} bytes (expected 64)")
+                return False
             
             # Buat keypair dari private key
             self.keypair = Keypair.from_bytes(private_key_bytes)

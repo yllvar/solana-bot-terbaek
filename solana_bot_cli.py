@@ -44,7 +44,13 @@ logging.getLogger('websockets').setLevel(logging.WARNING)
 logging.getLogger('aiohttp').setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-logger.info(f"📝 Log file: {log_filename}")
+logger.info(f"📝 General log file: {log_filename}")
+
+# Import after logging setup to get scanning log filename
+from solana_bot.monitor import scanning_logger, SCANNING_LOG_FILENAME, MARKET_SCANNING_LOG_FILENAME
+
+logger.info(f"🔍 Raydium scanning log: {SCANNING_LOG_FILENAME}")
+logger.info(f"📈 Market scanning log: {MARKET_SCANNING_LOG_FILENAME}")
 
 class SolanaSnipingBot:
     """Kelas utama untuk bot sniping Solana"""
