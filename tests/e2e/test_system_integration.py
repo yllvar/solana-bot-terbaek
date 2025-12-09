@@ -7,10 +7,10 @@ import asyncio
 import json
 import time
 from unittest.mock import Mock, AsyncMock, patch
-from solana_bot.monitor import PoolMonitor
-from solana_bot.config import BotConfig
-from solana_bot.security import SecurityAnalyzer
-from solana_bot.triggers import TradeTriggers
+from src.solana_bot.monitor import PoolMonitor
+from src.solana_bot.config import BotConfig
+from src.solana_bot.security import SecurityAnalyzer
+from src.solana_bot.triggers import TradeTriggers
 
 
 class TestFullSystemIntegration:

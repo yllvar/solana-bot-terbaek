@@ -12,14 +12,14 @@ from colorama import init, Fore, Style
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from solana_bot.config import BotConfig
-from solana_bot.wallet import WalletManager
-from solana_bot.monitor import PoolMonitor
-from solana_bot.security import SecurityAnalyzer
-from solana_bot.raydium.swap import RaydiumSwap
-from solana_bot.transaction import TransactionBuilder
-from solana_bot.price_tracker import PriceTracker
-from solana_bot.triggers import TradeTriggers
+from src.solana_bot.config import BotConfig
+from src.solana_bot.wallet import WalletManager
+from src.solana_bot.monitor import PoolMonitor
+from src.solana_bot.security import SecurityAnalyzer
+from src.solana_bot.raydium.swap import RaydiumSwap
+from src.solana_bot.transaction import TransactionBuilder
+from src.solana_bot.price_tracker import PriceTracker
+from src.solana_bot.triggers import TradeTriggers
 
 init(autoreset=True)
 
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 logger.info(f"📝 General log file: {log_filename}")
 
 # Import after logging setup to get scanning log filename
-from solana_bot.monitor import scanning_logger, SCANNING_LOG_FILENAME, MARKET_SCANNING_LOG_FILENAME
+from src.solana_bot.monitor import scanning_logger, SCANNING_LOG_FILENAME, MARKET_SCANNING_LOG_FILENAME
 
 logger.info(f"🔍 Raydium scanning log: {SCANNING_LOG_FILENAME}")
 logger.info(f"📈 Market scanning log: {MARKET_SCANNING_LOG_FILENAME}")
@@ -75,7 +75,7 @@ class SolanaSnipingBot:
             
             # 1. Config
             print(f"{Fore.YELLOW}📋 Memuat konfigurasi...")
-            self.config = BotConfig()
+            self.config = BotConfig("config/bot_config.json")
             print(f"{Fore.GREEN}✅ Konfigurasi berjaya dimuat\n")
             
             # 2. Wallet

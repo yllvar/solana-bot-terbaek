@@ -1,5 +1,22 @@
-solders
-solana
-base58
-requests
-colorama
+# Solana Trading Bot - Core Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core Solana libraries
+solana>=0.32.0
+solders>=0.20.0
+
+# Network and async libraries
+websockets>=11.0.0
+aiohttp>=3.8.0
+httpx>=0.25.0
+
+# Data encoding and utilities
+base58>=2.1.1
+construct>=2.10.68
+
+# CLI and user interface
+colorama>=0.4.6
+requests>=2.31.0
+
+# Logging and utilities
+python-json-logger>=2.0.0

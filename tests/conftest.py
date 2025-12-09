@@ -6,7 +6,7 @@ import json
 import asyncio
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock
-from solana_bot.config import BotConfig
+from src.solana_bot.config import BotConfig
 
 
 @pytest.fixture(scope="session")
@@ -23,6 +23,7 @@ def test_config_file(tmp_path):
     config_data = {
         "rpc_endpoint": "https://api.devnet.solana.com",
         "websocket_endpoint": "wss://api.devnet.solana.com",
+        "raydium_program_id": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
         "wallet_private_key": "test_private_key_placeholder",
         "bot_settings": {
             "take_profit": 30.0,
@@ -47,14 +48,13 @@ def test_config_file(tmp_path):
     with open(config_file, 'w') as f:
         json.dump(config_data, f, indent=2)
 
-    return config_file
+    return str(config_file)
 
 
 @pytest.fixture
 def bot_config(test_config_file):
     """Create a BotConfig instance with test configuration."""
-    config = BotConfig()
-    config.load_from_file(str(test_config_file))
+    config = BotConfig(str(test_config_file))
     return config
 
 

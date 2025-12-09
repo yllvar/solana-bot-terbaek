@@ -5,9 +5,9 @@ import pytest
 import asyncio
 import json
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from solana_bot.monitor import PoolMonitor
-from solana_bot.config import BotConfig
-from solana_bot.security import SecurityAnalyzer
+from src.solana_bot.monitor import PoolMonitor
+from src.solana_bot.config import BotConfig
+from src.solana_bot.security import SecurityAnalyzer
 
 
 class TestPoolDetectionE2E:
