@@ -57,7 +57,8 @@ class SecurityAnalyzer:
         rugcheck_api_key: Optional[str] = None,
         min_liquidity_sol: float = 5.0,
         max_top_holder_pct: float = 20.0,
-        max_risk_score: int = 50
+        max_risk_score: int = 50,
+        birdeye_client=None
     ):
         """
         Initialize security analyzer.
@@ -69,6 +70,7 @@ class SecurityAnalyzer:
             min_liquidity_sol: Minimum acceptable liquidity in SOL
             max_top_holder_pct: Maximum acceptable top holder percentage
             max_risk_score: Maximum acceptable RugCheck risk score
+            birdeye_client: Optional Birdeye client for token age validation
         """
         self.client = rpc_client
         self.config = config
@@ -76,6 +78,7 @@ class SecurityAnalyzer:
         self.min_liquidity_sol = min_liquidity_sol
         self.max_top_holder_pct = max_top_holder_pct
         self.max_risk_score = max_risk_score
+        self.birdeye_client = birdeye_client
         
         self._rugcheck: Optional[RugCheckClient] = None
     
@@ -524,17 +527,69 @@ class SecurityAnalyzer:
             logger.error(f"Error checking top holders: {e}")
             return {
                 'passed': True,  # Don't fail on error
-                'message': f'ℹ️ Could not check top holders: {str(e)}',
-                'top_holder_percentage': None
+                'message': f'ℹ️ Ownership check unavailable: {str(e)}',
+                'renounced': None
+            }
+
+    async def _check_token_age(self, token_mint: str) -> Dict[str, Any]:
+        """
+        Check if token is old enough to be considered stable
+
+        Args:
+            token_mint: Token mint address string
+
+        Returns:
+            Dict with age check results
+        """
+        try:
+            min_age_hours = self.config.min_token_age_hours if self.config else 24
+
+            # Get token age from Birdeye
+            if hasattr(self, 'birdeye_client') and self.birdeye_client:
+                age_hours = await self.birdeye_client.get_token_age_hours(token_mint)
+            else:
+                # Fallback if no Birdeye client
+                age_hours = None
+
+            if age_hours is None:
+                # If we can't get age data, pass with warning
+                return {
+                    'passed': True,
+                    'message': 'ℹ️ Token age unavailable - proceeding with caution',
+                    'age_hours': None,
+                    'min_required': min_age_hours
+                }
+
+            if age_hours >= min_age_hours:
+                return {
+                    'passed': True,
+                    'message': f'✅ Token age OK: {age_hours:.1f}h (min: {min_age_hours}h)',
+                    'age_hours': age_hours,
+                    'min_required': min_age_hours
+                }
+            else:
+                return {
+                    'passed': False,
+                    'message': f'🆕 Token too new: {age_hours:.1f}h < {min_age_hours}h minimum',
+                    'age_hours': age_hours,
+                    'min_required': min_age_hours
+                }
+
+        except Exception as e:
+            return {
+                'passed': True,  # Don't fail on error
+                'message': f'ℹ️ Age check unavailable: {str(e)}',
+                'age_hours': None,
+                'min_required': min_age_hours if self.config else 24
             }
 
     async def check_token_filters(self, token_mint: str) -> Dict[str, Any]:
         """
         Check all token filters according to configuration.
-        
+
         Args:
             token_mint: Token mint address string
-            
+
         Returns:
             Dictionary with filter results
         """
@@ -581,6 +636,14 @@ class SecurityAnalyzer:
         if not ownership_result['passed']:
             results['passed'] = False
             results['warnings'].append(ownership_result['message'])
+        
+        # 5. Check token age (if enabled)
+        if self.config and self.config.token_age_validation:
+            age_result = await self._check_token_age(token_mint)
+            results['filters']['token_age'] = age_result
+            if not age_result['passed']:
+                results['passed'] = False
+                results['warnings'].append(age_result['message'])
         
         return results
     

@@ -376,4 +376,49 @@ class BirdeyeClient:
                 results[address] = info
             await asyncio.sleep(0.1)  # Small delay between requests
 
-        return results
+    async def get_token_creation_date(self, token_address: str) -> Optional[float]:
+        """
+        Get token creation timestamp
+
+        Args:
+            token_address: Solana token mint address
+
+        Returns:
+            Unix timestamp of token creation or None if failed
+        """
+        overview = await self.get_token_overview(token_address)
+        if overview:
+            # Check for creation timestamp in various possible fields
+            creation_time = (
+                overview.get('creationTime') or
+                overview.get('created_at') or
+                overview.get('createdAt') or
+                overview.get('deployed_at')
+            )
+            if creation_time:
+                return float(creation_time)
+
+        return None
+
+    async def get_token_age_hours(self, token_address: str) -> Optional[float]:
+        """
+        Get token age in hours since creation
+
+        Args:
+            token_address: Solana token mint address
+
+        Returns:
+            Age in hours or None if failed
+        """
+        try:
+            import time
+            creation_timestamp = await self.get_token_creation_date(token_address)
+            if creation_timestamp:
+                current_time = time.time()
+                age_seconds = current_time - creation_timestamp
+                age_hours = age_seconds / 3600  # Convert to hours
+                return max(0, age_hours)  # Ensure non-negative
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error calculating token age for {token_address}: {e}")
+            return None

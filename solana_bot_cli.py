@@ -101,6 +101,11 @@ class SolanaSnipingBot:
             self.raydium_swap = RaydiumSwap(self.wallet.client, self.wallet)
             self.tx_builder = TransactionBuilder(self.wallet.client, self.wallet)
             self.price_tracker = PriceTracker(self.wallet.client, self.raydium_swap)
+            
+            # Initialize Birdeye client for advanced features
+            from .birdeye_client import BirdeyeClient
+            self.birdeye = BirdeyeClient(api_key=self.config.birdeye_api_key)
+            
             self.triggers = TradeTriggers(
                 self.price_tracker,
                 self.raydium_swap,
@@ -108,7 +113,11 @@ class SolanaSnipingBot:
                 self.wallet,
                 self.config
             )
-            self.security = SecurityAnalyzer(self.wallet.client, self.config)
+            self.security = SecurityAnalyzer(
+                self.wallet.client, 
+                self.config,
+                birdeye_client=self.birdeye
+            )
             
             # 4. Monitor
             print(f"{Fore.YELLOW}🔍 Menyediakan pemantau pool...")
@@ -219,6 +228,8 @@ class SolanaSnipingBot:
             await self.monitor.stop_monitoring()
         if self.wallet:
             await self.wallet.close()
+        if hasattr(self, 'birdeye') and self.birdeye:
+            await self.birdeye.close()
         print(f"{Fore.GREEN}✅ Selesai. Terima kasih!\n")
     
     async def run_interactive(self):

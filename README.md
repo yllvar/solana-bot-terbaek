@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12+-green?style=for-the-badge&logo=python)](https://python.org)
 [![Solana](https://img.shields.io/badge/Solana-Blockchain-purple?style=for-the-badge&logo=solana)](https://solana.com)
 
-> **Bot perdagangan Solana automatik dengan teknologi AI untuk mengesan dan membeli token baharu pada DEX Raydium dengan cepat dan selamat.**
+> **Bot perdagangan Solana automatik untuk mengesan dan membeli token baharu pada DEX Raydium dengan cepat dan selamat.**
 
 ## 📋 Kandungan
 
