@@ -172,7 +172,15 @@ class TestTradeExecutionE2E:
         triggers.set_triggers(token_mint, 30.0, 15.0)  # 30% take profit
 
         # Mock sell transaction
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Simulate price reaching take profit level
         tp_price = entry_price * 1.35  # 35% profit
@@ -180,7 +188,7 @@ class TestTradeExecutionE2E:
         await triggers.check_triggers(token_mint, tp_price, tp_price)
 
         # Verify sell was triggered
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_stop_loss_execution(self, test_config, mock_components):
@@ -202,7 +210,15 @@ class TestTradeExecutionE2E:
         triggers.set_triggers(token_mint, 30.0, 15.0)  # 15% stop loss
 
         # Mock sell transaction
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Simulate price dropping to stop loss level
         sl_price = entry_price * 0.82  # 18% loss
@@ -210,7 +226,7 @@ class TestTradeExecutionE2E:
         await triggers.check_triggers(token_mint, sl_price, sl_price)
 
         # Verify sell was triggered
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_trailing_stop_execution(self, test_config, mock_components):
@@ -232,7 +248,15 @@ class TestTradeExecutionE2E:
         triggers.set_triggers(token_mint, 30.0, 15.0)
 
         # Mock sell transaction
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Simulate price increase then drop below trailing stop
         high_price = 1.5  # 50% profit
@@ -245,7 +269,7 @@ class TestTradeExecutionE2E:
         await triggers.check_triggers(token_mint, current_price, high_price)
 
         # Verify sell was triggered
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_max_hold_time_execution(self, test_config, mock_components):
@@ -267,7 +291,15 @@ class TestTradeExecutionE2E:
         triggers.set_triggers(token_mint, 30.0, 15.0)
 
         # Mock sell transaction
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Simulate position being held too long
         max_hold_seconds = config.max_hold_time_hours * 3600
@@ -278,7 +310,7 @@ class TestTradeExecutionE2E:
         await triggers.check_triggers(token_mint, entry_price, entry_price)
 
         # Verify sell was triggered due to timeout
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_trade_lifecycle_e2e(self, test_config, mock_components):
@@ -305,14 +337,22 @@ class TestTradeExecutionE2E:
         assert token_mint in triggers.triggers
 
         # Phase 2: Trigger execution
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Trigger take profit
         tp_price = entry_price * 1.35
         await triggers.check_triggers(token_mint, tp_price, tp_price)
 
         # Verify complete lifecycle
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_multiple_positions_management(self, test_config, mock_components):
@@ -343,14 +383,22 @@ class TestTradeExecutionE2E:
         assert len(triggers.triggers) == 3
 
         # Mock sell transaction
-        mock_components['transaction_builder'].build_sell_transaction = AsyncMock(return_value=Mock())
+        mock_components['transaction_builder'].build_and_send_transaction = AsyncMock(return_value="test_signature")
+        mock_components['raydium_swap'].get_pool_keys = AsyncMock(return_value={
+            'base_mint': 'TOKEN_123',
+            'quote_mint': 'So11111111111111111111111111111111111111112',
+            'amm_id': 'POOL_123'
+        })
+        mock_components['raydium_swap'].build_swap_instruction = Mock(return_value=Mock())
+        mock_components['raydium_swap'].get_associated_token_address = Mock(return_value="token_account")
+        mock_components['raydium_swap'].calculate_min_amount_out = Mock(return_value=1000000)
 
         # Trigger sell for first token
         tp_price = 1.0 * 1.35  # 35% profit
         await triggers.check_triggers('TOKEN_1', tp_price, tp_price)
 
         # Verify only first position triggered sell
-        mock_components['transaction_builder'].build_sell_transaction.assert_called_once()
+        mock_components['transaction_builder'].build_and_send_transaction.assert_called_once()
 
     def test_trigger_configuration_validation(self, test_config, mock_components):
         """Test that trigger configurations are properly validated."""
