@@ -19,12 +19,14 @@ class TradeTriggers:
         price_tracker: PriceTracker,
         raydium_swap: RaydiumSwap,
         transaction_builder: TransactionBuilder,
-        wallet
+        wallet,
+        config=None
     ):
         self.price_tracker = price_tracker
         self.raydium = raydium_swap
         self.tx_builder = transaction_builder
         self.wallet = wallet
+        self.config = config
         self.positions: Dict[str, Dict[str, Any]] = {}
         self.triggers: Dict[str, Dict[str, Any]] = {}
         
@@ -78,6 +80,24 @@ class TradeTriggers:
             
         entry_price = position['entry_price']
         pnl_pct = ((current_price - entry_price) / entry_price) * 100
+        
+        # Check Trailing Stop first (before TP/SL to lock in profits)
+        if self.config and self.config.enable_trailing_stop:
+            trailing_stop_price = position['highest_price'] * (1 - self.config.trailing_stop_percentage/100)
+            if current_price <= trailing_stop_price:
+                pnl_from_peak = ((current_price - position['highest_price']) / position['highest_price']) * 100
+                logger.info(f"🚀 TRAILING STOP ACTIVATED! Price: {current_price:.6f}, Peak: {position['highest_price']:.6f}, P&L from peak: {pnl_from_peak:.2f}%")
+                await self.execute_sell(token_mint, "TRAILING_STOP", current_price)
+                return
+        
+        # Check Max Hold Time
+        if self.config and self.config.max_hold_time_hours > 0:
+            current_time = time.time()
+            hold_hours = (current_time - position['entry_time']) / 3600
+            if hold_hours >= self.config.max_hold_time_hours:
+                logger.info(f"⏰ MAX HOLD TIME REACHED! Holding for {hold_hours:.2f} hours (max: {self.config.max_hold_time_hours})")
+                await self.execute_sell(token_mint, "MAX_HOLD_TIME", current_price)
+                return
         
         if pnl_pct >= triggers['take_profit']:
             logger.info(f"🚀 TAKE PROFIT DICAPAI! P&L: +{pnl_pct:.2f}%")

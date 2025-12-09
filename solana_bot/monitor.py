@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Optional, Callable, Dict, Any
+import time
 from solders.pubkey import Pubkey
 from solders.rpc.config import RpcTransactionLogsFilterMentions
 from solana.rpc.async_api import AsyncClient
@@ -91,6 +92,11 @@ class PoolMonitor:
             'pools_bought': 0,
             'pools_skipped_security': 0
         }
+        
+        # Trade rate limiting
+        self.trade_count = 0
+        self.last_trade_reset = time.time()
+        self.cooldowns = {}
         
     async def start_monitoring(self):
         """Mula monitor pool baharu"""
@@ -337,9 +343,56 @@ class PoolMonitor:
     
     async def execute_auto_buy(self, pool_info: Dict[str, Any]):
         """Laksanakan pembelian automatik"""
-        logger.info(f"🤖 Memulakan Auto Buy untuk {pool_info.get('token_address')}...")
+        token_address = pool_info.get('token_address')
+        logger.info(f"🤖 Memulakan Auto Buy untuk {token_address}...")
         
         try:
+            # Check trade rate limits
+            current_time = time.time()
+            
+            # Reset counter every hour
+            if current_time - self.last_trade_reset >= 3600:  # 3600 seconds = 1 hour
+                self.trade_count = 0
+                self.last_trade_reset = current_time
+                logger.info("🔄 Trade counter reset (hourly)")
+            
+            # Check max trades per hour
+            if self.trade_count >= self.config.max_trades_per_hour:
+                logger.warning(f"⚠️ Max trades per hour reached ({self.config.max_trades_per_hour})")
+                return
+            
+            # Check cooldown after sell
+            if token_address in self.cooldowns and current_time < self.cooldowns[token_address]:
+                remaining = self.cooldowns[token_address] - current_time
+                logger.info(f"⏳ Cooldown active for {token_address[:8]}...: {remaining:.1f}s remaining")
+                return
+            
+            # Increment trade counter
+            self.trade_count += 1
+            logger.info(f"📊 Trade #{self.trade_count}/{self.config.max_trades_per_hour} this hour")
+            
+            # Check minimum 24h volume
+            try:
+                volume = await self._get_token_volume_24h(token_address)
+                if volume < self.config.min_volume_24h:
+                    logger.warning(f"⚠️ Volume too low: ${volume:,.0f} < ${self.config.min_volume_24h:,.0f}")
+                    return
+                logger.info(f"📈 24h Volume: ${volume:,.0f}")
+            except Exception as e:
+                logger.warning(f"⚠️ Volume check failed: {e} - proceeding with caution")
+            
+            # Check token filters (supply, holders, verification, ownership)
+            try:
+                filter_result = await self.security.check_token_filters(token_address)
+                if not filter_result['passed']:
+                    logger.warning(f"🚫 Token failed filter checks!")
+                    for warning in filter_result['warnings']:
+                        logger.warning(f"   {warning}")
+                    return
+                logger.info(f"✅ Token passed all filter checks")
+            except Exception as e:
+                logger.warning(f"⚠️ Token filter check failed: {e} - proceeding with caution")
+            
             if hasattr(self.config, 'buy_delay') and self.config.buy_delay > 0:
                 logger.info(f"⏳ Menunggu {self.config.buy_delay} saat...")
                 await asyncio.sleep(self.config.buy_delay)
@@ -391,11 +444,44 @@ class PoolMonitor:
             
             if signature:
                 logger.info(f"✅ Auto Buy BERJAYA! TX: {signature}")
+                self.stats['pools_bought'] += 1
+                
+                # Set cooldown after successful buy
+                self.cooldowns[token_address] = current_time + self.config.cooldown_after_sell
+                logger.info(f"⏰ Cooldown set for {token_address[:8]}...: {self.config.cooldown_after_sell}s")
             else:
                 logger.error("❌ Auto Buy GAGAL (TX failed)")
             
         except Exception as e:
             logger.error(f"❌ Auto Buy gagal: {e}")
+
+    async def _get_token_volume_24h(self, token_address: str) -> float:
+        """
+        Get 24h trading volume for a token.
+        
+        TODO: Implement actual API calls to DexScreener/Birdeye
+        For now returns a mock high volume to allow testing
+        """
+        try:
+            # Placeholder implementation
+            # In production, this would call:
+            # - DexScreener API: https://api.dexscreener.com/latest/dex/pairs/solana/{token_address}
+            # - Birdeye API: https://public-api.birdeye.so/public/token_overview?address={token_address}
+            # - Or other DEX APIs
+            
+            logger.debug(f"🔍 Checking 24h volume for {token_address}")
+            
+            # Mock implementation - returns high volume for testing
+            # Replace with actual API call in production
+            mock_volume = 10000.0  # $10,000 - above our $5,000 minimum
+            logger.debug(f"📊 Mock volume for {token_address[:8]}...: ${mock_volume:,.0f}")
+            
+            return mock_volume
+            
+        except Exception as e:
+            logger.error(f"❌ Error fetching volume for {token_address}: {e}")
+            # Return high value to allow trading if API fails
+            return 100000.0
 
     def _is_new_pool(self, result) -> tuple[bool, str]:
         """

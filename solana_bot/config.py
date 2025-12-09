@@ -99,6 +99,62 @@ class BotConfig:
         """Kecairan minimum yang diperlukan (SOL)"""
         return self.config['bot_settings']['min_liquidity_sol']
     
+    @property
+    def max_trades_per_hour(self) -> int:
+        """Maksimum dagangan per jam"""
+        return self.config['bot_settings'].get('max_trades_per_hour', 5)
+    
+    @property
+    def min_volume_24h(self) -> float:
+        """Volume minimum 24 jam ($)"""
+        return self.config['bot_settings'].get('min_volume_24h', 5000)
+    
+    @property
+    def max_hold_time_hours(self) -> float:
+        """Maksimum masa pegangan (jam)"""
+        return self.config['bot_settings'].get('max_hold_time_hours', 4)
+    
+    @property
+    def cooldown_after_sell(self) -> int:
+        """Cooldown selepas jual (saat)"""
+        return self.config['bot_settings'].get('cooldown_after_sell', 60)
+    
+    @property
+    def enable_trailing_stop(self) -> bool:
+        """Aktifkan trailing stop"""
+        return self.config['bot_settings'].get('enable_trailing_stop', True)
+    
+    @property
+    def trailing_stop_percentage(self) -> float:
+        """Peratus trailing stop"""
+        return self.config['bot_settings'].get('trailing_stop_percentage', 10)
+    
+    # Token Filters
+    @property
+    def max_supply(self) -> int:
+        """Bekalan maksimum token"""
+        return self.config.get('token_filters', {}).get('max_supply', 1000000000)
+    
+    @property
+    def min_holders(self) -> int:
+        """Minimum pemegang token"""
+        return self.config.get('token_filters', {}).get('min_holders', 100)
+    
+    @property
+    def max_top_holder_percent(self) -> float:
+        """Peratus maksimum pemegang teratas"""
+        return self.config.get('token_filters', {}).get('max_top_holder_percent', 20)
+    
+    @property
+    def contract_verified(self) -> bool:
+        """Semak kontrak diverifikasi"""
+        return self.config.get('token_filters', {}).get('contract_verified', True)
+    
+    @property
+    def renounced_ownership(self) -> bool:
+        """Semak pemilikan direnounce"""
+        return self.config.get('token_filters', {}).get('renounced_ownership', True)
+    
     def update_setting(self, key: str, value: Any):
         """
         Kemas kini tetapan bot

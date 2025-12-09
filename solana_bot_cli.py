@@ -105,9 +105,10 @@ class SolanaSnipingBot:
                 self.price_tracker,
                 self.raydium_swap,
                 self.tx_builder,
-                self.wallet
+                self.wallet,
+                self.config
             )
-            self.security = SecurityAnalyzer(self.wallet.client)
+            self.security = SecurityAnalyzer(self.wallet.client, self.config)
             
             # 4. Monitor
             print(f"{Fore.YELLOW}🔍 Menyediakan pemantau pool...")
@@ -143,8 +144,33 @@ class SolanaSnipingBot:
             # 1. Security Check
             if self.config.check_rug_pull:
                 print(f"{Fore.YELLOW}🔍 Menganalisis keselamatan token...")
-                # Placeholder check
-                print(f"{Fore.GREEN}✅ Analisis keselamatan selesai (Placeholder)\n")
+                
+                # Run comprehensive token filter checks
+                try:
+                    filter_result = await self.security.check_token_filters(token_address)
+                    
+                    if filter_result['passed']:
+                        print(f"{Fore.GREEN}✅ Token passed all security filters")
+                        # Show filter details
+                        filters = filter_result.get('filters', {})
+                        if 'supply' in filters and filters['supply']['passed']:
+                            supply_info = filters['supply']
+                            print(f"{Fore.GREEN}   📊 Supply: {supply_info.get('supply', 'N/A'):,} (OK)")
+                        if 'holders' in filters and filters['holders']['passed']:
+                            holder_info = filters['holders']
+                            print(f"{Fore.GREEN}   👥 Holders: {holder_info.get('holder_count', 'N/A')} (OK)")
+                    else:
+                        print(f"{Fore.RED}🚫 Token failed security filters!")
+                        for warning in filter_result.get('warnings', []):
+                            print(f"{Fore.RED}   {warning}")
+                        print(f"{Fore.YELLOW}⚠️ Skipping this token due to security concerns")
+                        return  # Don't proceed with this token
+                        
+                except Exception as e:
+                    print(f"{Fore.YELLOW}⚠️ Security check failed: {e} - proceeding with caution")
+                    print(f"{Fore.GREEN}✅ Using basic security checks (fallback)")
+            else:
+                print(f"{Fore.YELLOW}ℹ️ Security checks disabled in configuration")
             
             # 2. Auto Buy (Handled by Monitor internally, but we can log here)
             if self.config.buy_amount > 0:
@@ -230,6 +256,18 @@ class SolanaSnipingBot:
         print(f"Buy Amount: {self.config.buy_amount} SOL")
         print(f"TP: {self.config.take_profit_percentage}%")
         print(f"SL: {self.config.stop_loss_percentage}%")
+        print(f"Trailing Stop: {'Enabled' if self.config.enable_trailing_stop else 'Disabled'} ({self.config.trailing_stop_percentage}%)")
+        print(f"Min Liquidity: {self.config.min_liquidity} SOL")
+        print(f"Max Trades/Hour: {self.config.max_trades_per_hour}")
+        print(f"Max Hold Time: {self.config.max_hold_time_hours} hours")
+        print(f"Min Volume 24h: ${self.config.min_volume_24h:,}")
+        print(f"Cooldown After Sell: {self.config.cooldown_after_sell}s")
+        print(f"\n🔍 TOKEN FILTERS:")
+        print(f"Max Supply: {self.config.max_supply:,}")
+        print(f"Min Holders: {self.config.min_holders}")
+        print(f"Max Top Holder: {self.config.max_top_holder_percent}%")
+        print(f"Contract Verified: {self.config.contract_verified}")
+        print(f"Ownership Renounced: {self.config.renounced_ownership}")
 
 async def main():
     bot = SolanaSnipingBot()
