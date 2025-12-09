@@ -5,6 +5,11 @@
   "raydium_authority": "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
   "serum_program_id": "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
 
+  "api_keys": {
+    "birdeye": "6a85f551e12e477399ebd932556f7492",
+    "rugcheck": ""
+  },
+
   "bot_settings": {
     "buy_delay_seconds": 0,
     "buy_amount_sol": 0.1,
@@ -31,9 +36,20 @@
     "renounced_ownership": true
   },
 
-  "monitoring": {
-    "enable_notifications": false,
-    "webhook_url": "",
-    "log_level": "INFO"
+  "advanced_features": {
+    "multi_source_volume": true,
+    "pool_liquidity_analysis": true,
+    "price_volatility_filter": true,
+    "token_age_validation": true,
+    "advanced_holder_analysis": false
+  },
+
+  "validation_thresholds": {
+    "min_token_age_hours": 24,
+    "max_price_change_24h": 50,
+    "max_volatility_threshold": 0.3,
+    "min_volume_confidence": 0.3,
+    "max_price_impact": 0.05,
+    "min_distribution_score": 0.7
   }
 }

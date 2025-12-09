@@ -9,7 +9,10 @@ from solana.rpc.websocket_api import connect
 from solana.rpc.commitment import Confirmed
 
 from .raydium.swap import RaydiumSwap
-from .transaction import TransactionBuilder
+from .rugcheck_client import RugCheckClient, RiskLevel
+from .birdeye_client import BirdeyeClient
+from .dex_screener_client import DexScreenerClient
+from .volume_validator import VolumeValidator
 from .config import BotConfig
 from .pool_parser import RaydiumPoolParser, PoolInfo
 from .security import SecurityAnalyzer
@@ -81,6 +84,15 @@ class PoolMonitor:
         # Enhanced components
         self.pool_parser = RaydiumPoolParser()
         self.security = security_analyzer
+        
+        # Initialize Birdeye client for market data
+        self.birdeye = BirdeyeClient(api_key=config.birdeye_api_key)
+        
+        # Initialize DexScreener client for volume validation
+        self.dex_screener = DexScreenerClient()
+        
+        # Initialize volume validator with multiple sources
+        self.volume_validator = VolumeValidator(self.birdeye, self.dex_screener)
         
         self.raydium_swap = RaydiumSwap(self.client, self.wallet)
         self.tx_builder = TransactionBuilder(self.client, self.wallet)
@@ -457,31 +469,60 @@ class PoolMonitor:
 
     async def _get_token_volume_24h(self, token_address: str) -> float:
         """
-        Get 24h trading volume for a token.
-        
-        TODO: Implement actual API calls to DexScreener/Birdeye
-        For now returns a mock high volume to allow testing
+        Get validated 24h trading volume using multi-source validation.
+
+        Uses VolumeValidator to combine data from Birdeye and DexScreener
+        for more accurate volume assessment.
+
+        Args:
+            token_address: Solana token mint address
+
+        Returns:
+            Validated 24h volume in USD (fallback-safe)
         """
         try:
-            # Placeholder implementation
-            # In production, this would call:
-            # - DexScreener API: https://api.dexscreener.com/latest/dex/pairs/solana/{token_address}
-            # - Birdeye API: https://public-api.birdeye.so/public/token_overview?address={token_address}
-            # - Or other DEX APIs
-            
-            logger.debug(f"🔍 Checking 24h volume for {token_address}")
-            
-            # Mock implementation - returns high volume for testing
-            # Replace with actual API call in production
-            mock_volume = 10000.0  # $10,000 - above our $5,000 minimum
-            logger.debug(f"📊 Mock volume for {token_address[:8]}...: ${mock_volume:,.0f}")
-            
-            return mock_volume
-            
+            logger.debug(f"🔍 Validating 24h volume for {token_address} via multi-source analysis")
+
+            # Use volume validator for multi-source validation
+            validated_result = await self.volume_validator.get_validated_volume(token_address)
+
+            # Log validation details
+            if validated_result.sources_used > 1:
+                logger.debug(
+                    f"📊 Multi-source volume: ${validated_result.final_volume:,.0f} "
+                    f"(confidence: {validated_result.confidence_score:.2f}, "
+                    f"sources: {validated_result.sources_used})"
+                )
+
+                # Log any warnings
+                for warning in validated_result.warnings:
+                    logger.debug(f"⚠️ Volume validation warning: {warning}")
+            else:
+                logger.debug(
+                    f"📊 Single-source volume: ${validated_result.final_volume:,.0f} "
+                    f"(confidence: {validated_result.confidence_score:.2f})"
+                )
+
+            # Apply minimum confidence threshold from config
+            min_confidence = self.config.min_volume_confidence  # Use config value
+            if validated_result.confidence_score < min_confidence:
+                logger.warning(
+                    f"⚠️ Low confidence volume data: {validated_result.confidence_score:.2f} < {min_confidence} "
+                    f"- using conservative fallback"
+                )
+                # Use higher fallback for low confidence data
+                conservative_fallback = max(validated_result.final_volume, 25000.0)
+                logger.debug(f"📊 Using conservative fallback: ${conservative_fallback:,.0f}")
+                return conservative_fallback
+
+            return validated_result.final_volume
+
         except Exception as e:
-            logger.error(f"❌ Error fetching volume for {token_address}: {e}")
-            # Return high value to allow trading if API fails
-            return 100000.0
+            logger.error(f"❌ Multi-source volume validation failed for {token_address}: {e}")
+            # Return high fallback value to allow trading if validation fails
+            fallback_volume = 100000.0
+            logger.debug(f"📊 Using error fallback volume: ${fallback_volume:,.0f}")
+            return fallback_volume
 
     def _is_new_pool(self, result) -> tuple[bool, str]:
         """
@@ -766,5 +807,9 @@ class PoolMonitor:
         # Cleanup
         if self.security:
             await self.security.close()
+        if hasattr(self, 'volume_validator') and self.volume_validator:
+            await self.volume_validator.close()
+        if hasattr(self, 'birdeye') and self.birdeye:
+            await self.birdeye.close()
         await self.client.close()
 

@@ -4,7 +4,7 @@ Modul konfigurasi untuk bot Solana sniping
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from solders.pubkey import Pubkey
 
 
@@ -155,16 +155,69 @@ class BotConfig:
         """Semak pemilikan direnounce"""
         return self.config.get('token_filters', {}).get('renounced_ownership', True)
     
-    def update_setting(self, key: str, value: Any):
-        """
-        Kemas kini tetapan bot
-        
-        Args:
-            key: Kunci tetapan
-            value: Nilai baharu
-        """
-        if key in self.config['bot_settings']:
-            self.config['bot_settings'][key] = value
-            self.save_config()
-        else:
-            raise KeyError(f"Tetapan tidak dijumpai: {key}")
+    @property
+    def birdeye_api_key(self) -> Optional[str]:
+        """Get Birdeye API key"""
+        return self.config.get('api_keys', {}).get('birdeye', '')
+
+    @property
+    def rugcheck_api_key(self) -> Optional[str]:
+        """Get RugCheck API key"""
+        return self.config.get('api_keys', {}).get('rugcheck', '')
+
+    # Advanced Features
+    @property
+    def multi_source_volume(self) -> bool:
+        """Enable multi-source volume validation"""
+        return self.config.get('advanced_features', {}).get('multi_source_volume', False)
+
+    @property
+    def pool_liquidity_analysis(self) -> bool:
+        """Enable pool liquidity analysis before trading"""
+        return self.config.get('advanced_features', {}).get('pool_liquidity_analysis', False)
+
+    @property
+    def price_volatility_filter(self) -> bool:
+        """Enable price volatility filtering"""
+        return self.config.get('advanced_features', {}).get('price_volatility_filter', False)
+
+    @property
+    def token_age_validation(self) -> bool:
+        """Enable token age validation"""
+        return self.config.get('advanced_features', {}).get('token_age_validation', False)
+
+    @property
+    def advanced_holder_analysis(self) -> bool:
+        """Enable advanced holder analysis"""
+        return self.config.get('advanced_features', {}).get('advanced_holder_analysis', False)
+
+    # Validation Thresholds
+    @property
+    def min_token_age_hours(self) -> int:
+        """Minimum token age in hours"""
+        return self.config.get('validation_thresholds', {}).get('min_token_age_hours', 24)
+
+    @property
+    def max_price_change_24h(self) -> float:
+        """Maximum price change in 24h (%)"""
+        return self.config.get('validation_thresholds', {}).get('max_price_change_24h', 50)
+
+    @property
+    def max_volatility_threshold(self) -> float:
+        """Maximum volatility threshold (0.0-1.0)"""
+        return self.config.get('validation_thresholds', {}).get('max_volatility_threshold', 0.3)
+
+    @property
+    def min_volume_confidence(self) -> float:
+        """Minimum volume confidence score (0.0-1.0)"""
+        return self.config.get('validation_thresholds', {}).get('min_volume_confidence', 0.3)
+
+    @property
+    def max_price_impact(self) -> float:
+        """Maximum price impact threshold (0.0-1.0)"""
+        return self.config.get('validation_thresholds', {}).get('max_price_impact', 0.05)
+
+    @property
+    def min_distribution_score(self) -> float:
+        """Minimum holder distribution score (0.0-1.0)"""
+        return self.config.get('validation_thresholds', {}).get('min_distribution_score', 0.7)

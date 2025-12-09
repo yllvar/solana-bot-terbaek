@@ -3,6 +3,7 @@ Performance benchmarking tests for the Solana bot
 """
 import pytest
 import asyncio
+import json
 import time
 from unittest.mock import Mock, AsyncMock, patch
 from src.solana_bot.monitor import PoolMonitor
