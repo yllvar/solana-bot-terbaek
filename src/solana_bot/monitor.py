@@ -392,7 +392,42 @@ class PoolMonitor:
                 logger.info(f"📈 24h Volume: ${volume:,.0f}")
             except Exception as e:
                 logger.warning(f"⚠️ Volume check failed: {e} - proceeding with caution")
-            
+
+            # Check price volatility (if enabled)
+            if self.config.price_volatility_filter:
+                try:
+                    volatility = await self.birdeye.calculate_volatility(token_address, "1H", 24)
+                    if volatility is not None:
+                        max_volatility = self.config.max_volatility_threshold
+                        if volatility > max_volatility:
+                            logger.warning(
+                                f"📊 Price too volatile: {volatility:.3f} > {max_volatility:.3f} - skipping trade"
+                            )
+                            return
+                        logger.info(f"📊 Price volatility OK: {volatility:.3f} (max: {max_volatility:.3f})")
+                    else:
+                        logger.debug("📊 Could not calculate volatility - proceeding with caution")
+                except Exception as e:
+                    logger.warning(f"⚠️ Price volatility check failed: {e} - proceeding with caution")
+
+            # Check pool liquidity (if enabled)
+            if self.config.pool_liquidity_analysis:
+                try:
+                    liquidity_analysis = await self._analyze_pool_liquidity(
+                        pool_address, token_address, self.config.buy_amount
+                    )
+
+                    if not liquidity_analysis['can_trade']:
+                        logger.warning(f"💧 Liquidity check failed: {liquidity_analysis['reason']}")
+                        return
+
+                    logger.info(
+                        f"💧 Pool liquidity OK: ${liquidity_analysis['liquidity_usd']:,.0f} "
+                        f"({liquidity_analysis['price_impact']:.2f}% impact)"
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ Pool liquidity analysis failed: {e} - proceeding with caution")
+
             # Check token filters (supply, holders, verification, ownership)
             try:
                 filter_result = await self.security.check_token_filters(token_address)
@@ -524,16 +559,100 @@ class PoolMonitor:
             logger.debug(f"📊 Using error fallback volume: ${fallback_volume:,.0f}")
             return fallback_volume
 
-    def _is_new_pool(self, result) -> tuple[bool, str]:
+    async def _analyze_pool_liquidity(self, pool_address: str, token_address: str, trade_amount_sol: float) -> Dict[str, Any]:
         """
-        Check if result represents a new pool initialization.
-        
-        Performs detailed validation to ensure accurate token detection.
-        
+        Analyze pool liquidity and calculate price impact for trade execution.
+
+        Args:
+            pool_address: Raydium pool address
+            token_address: Token mint address
+            trade_amount_sol: Amount of SOL to trade
+
         Returns:
-            (is_pool_creation, pool_type) where pool_type is 'cpmm', 'v4', or 'unknown'
+            Dict with liquidity analysis results
         """
-        self.stats['transactions_seen'] += 1
+        try:
+            logger.debug(f"💧 Analyzing liquidity for pool {pool_address[:8]}...")
+
+            # Get liquidity from multiple sources
+            liquidity_sources = []
+
+            # Source 1: DexScreener
+            try:
+                dex_liquidity = await self.dex_screener.get_token_liquidity(token_address)
+                if dex_liquidity:
+                    liquidity_sources.append({
+                        'source': 'dexscreener',
+                        'liquidity_usd': dex_liquidity,
+                        'confidence': 0.7
+                    })
+            except Exception as e:
+                logger.debug(f"DexScreener liquidity check failed: {e}")
+
+            # Source 2: Birdeye (if available)
+            try:
+                birdeye_liquidity = await self.birdeye.get_token_liquidity(token_address)
+                if birdeye_liquidity:
+                    liquidity_sources.append({
+                        'source': 'birdeye',
+                        'liquidity_usd': birdeye_liquidity,
+                        'confidence': 0.8
+                    })
+            except Exception as e:
+                logger.debug(f"Birdeye liquidity check failed: {e}")
+
+            if not liquidity_sources:
+                return {
+                    'can_trade': False,
+                    'reason': 'No liquidity data available',
+                    'liquidity_usd': None,
+                    'price_impact': None
+                }
+
+            # Use weighted average liquidity
+            total_weight = sum(source['confidence'] for source in liquidity_sources)
+            weighted_liquidity = sum(
+                source['liquidity_usd'] * source['confidence']
+                for source in liquidity_sources
+            ) / total_weight
+
+            # Calculate price impact
+            # Simplified formula: impact = (trade_amount / liquidity) * 100
+            price_impact = (trade_amount_sol / max(weighted_liquidity, 1)) * 100
+
+            # Determine if trade is acceptable
+            max_impact = self.config.max_price_impact
+            can_trade = price_impact <= max_impact
+
+            result = {
+                'can_trade': can_trade,
+                'liquidity_usd': weighted_liquidity,
+                'price_impact': price_impact,
+                'max_allowed_impact': max_impact,
+                'sources_used': len(liquidity_sources),
+                'reason': None
+            }
+
+            if not can_trade:
+                result['reason'] = f"Price impact too high: {price_impact:.2f}% > {max_impact:.2f}%"
+
+            logger.debug(
+                f"💧 Liquidity analysis: ${weighted_liquidity:,.0f} liquidity, "
+                f"{price_impact:.2f}% impact ({'✅' if can_trade else '❌'})"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Pool liquidity analysis failed: {e}")
+            return {
+                'can_trade': False,
+                'reason': f'Liquidity analysis error: {str(e)}',
+                'liquidity_usd': None,
+                'price_impact': None
+            }
+
+    def _is_new_pool(self, result) -> tuple[bool, str]:
         
         if not hasattr(result, 'value') or not result.value:
             market_scanner.debug("VALIDATION_FAILED: Transaction has no data")

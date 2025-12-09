@@ -186,28 +186,129 @@ class BirdeyeClient:
             }
         return None
 
-    async def get_price_history(self, token_address: str, timeframe: str = "1D") -> Optional[List[Dict[str, Any]]]:
+    async def get_price_history(self, token_address: str, timeframe: str = "1D", limit: int = 24) -> Optional[List[Dict[str, Any]]]:
         """
         Get token price history
 
         Args:
             token_address: Solana token mint address
             timeframe: Timeframe (1m, 5m, 1H, 1D, etc.)
+            limit: Number of data points to retrieve
 
         Returns:
             List of price data points or None if failed
         """
-        endpoint = f"/defi/history_price"
-        params = {
-            "address": token_address,
-            "chain": "solana",
-            "type": timeframe
-        }
+        try:
+            endpoint = "/defi/history_price"
+            params = {
+                "address": token_address,
+                "chain": "solana",
+                "type": timeframe,
+                "limit": limit
+            }
 
-        data = await self._make_request(endpoint, params)
-        if data and data.get("success"):
-            return data.get("data", {}).get("items", [])
-        return None
+            data = await self._make_request(endpoint, params)
+            if data and data.get("success"):
+                return data.get("data", {}).get("items", [])
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error getting price history for {token_address}: {e}")
+            return None
+
+    async def get_price_change_24h(self, token_address: str) -> Optional[float]:
+        """
+        Get 24-hour price change percentage
+
+        Args:
+            token_address: Solana token mint address
+
+        Returns:
+            Price change percentage or None if failed
+        """
+        try:
+            # Get recent price history
+            price_history = await self.get_price_history(token_address, "1H", 24)
+            if not price_history or len(price_history) < 2:
+                return None
+
+            # Sort by timestamp (most recent first)
+            price_history.sort(key=lambda x: x.get('unixTime', 0), reverse=True)
+
+            # Get current and 24h ago prices
+            current_price = None
+            price_24h_ago = None
+
+            for point in price_history:
+                if 'value' in point and point['value'] > 0:
+                    if current_price is None:
+                        current_price = point['value']
+                    price_24h_ago = point['value']
+
+            if current_price and price_24h_ago and price_24h_ago > 0:
+                change_pct = ((current_price - price_24h_ago) / price_24h_ago) * 100
+                return change_pct
+
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error calculating 24h price change for {token_address}: {e}")
+            return None
+
+    async def calculate_volatility(self, token_address: str, timeframe: str = "1H", periods: int = 24) -> Optional[float]:
+        """
+        Calculate price volatility over a given period
+
+        Args:
+            token_address: Solana token mint address
+            timeframe: Timeframe for data points
+            periods: Number of periods to analyze
+
+        Returns:
+            Volatility score (0.0-1.0) or None if failed
+        """
+        try:
+            # Get price history
+            price_history = await self.get_price_history(token_address, timeframe, periods)
+            if not price_history or len(price_history) < 3:
+                return None
+
+            # Extract price values
+            prices = []
+            for point in price_history:
+                if 'value' in point and point['value'] > 0:
+                    prices.append(point['value'])
+
+            if len(prices) < 3:
+                return None
+
+            # Calculate returns (percentage changes)
+            returns = []
+            for i in range(1, len(prices)):
+                if prices[i-1] > 0:
+                    ret = (prices[i] - prices[i-1]) / prices[i-1]
+                    returns.append(abs(ret))  # Use absolute returns for volatility
+
+            if not returns:
+                return None
+
+            # Calculate volatility as coefficient of variation of absolute returns
+            import statistics
+            try:
+                mean_return = statistics.mean(returns)
+                if mean_return == 0:
+                    return 0.0
+
+                std_return = statistics.stdev(returns)
+                volatility = min(std_return / mean_return, 1.0)  # Cap at 1.0
+
+                logger.debug(f"📊 Calculated volatility for {token_address[:8]}...: {volatility:.3f}")
+                return volatility
+
+            except statistics.StatisticsError:
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Error calculating volatility for {token_address}: {e}")
+            return None
 
     async def search_pairs(self, query: str) -> Optional[List[Dict[str, Any]]]:
         """
