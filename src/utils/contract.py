@@ -1,6 +1,6 @@
 from colorama import init
-from getwallet import get_wallet_from_private_key_bs58
-from checkbalance import check_sol_balance
+from src.scripts.getwallet import get_wallet_from_private_key_bs58
+from src.scripts.checkbalance import check_sol_balance
 
 init(autoreset=True)
 

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from colorama import init, Fore, Style
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.solana_bot.config import BotConfig
 from src.solana_bot.wallet import WalletManager
