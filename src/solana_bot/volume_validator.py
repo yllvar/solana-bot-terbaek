@@ -117,6 +117,96 @@ class VolumeValidator:
                 warnings=[f"Validation error: {str(e)}"]
             )
 
+    async def get_bulk_validated_volumes(self, token_addresses: List[str]) -> Dict[str, ValidatedVolume]:
+        """
+        Get validated volumes for multiple tokens efficiently using bulk operations.
+
+        Args:
+            token_addresses: List of token addresses to validate
+
+        Returns:
+            Dict mapping token addresses to ValidatedVolume objects
+        """
+        try:
+            await self.initialize()
+            results = {}
+
+            # Collect volume data from all sources using bulk operations
+            birdeye_volumes = {}
+            dex_volumes = {}
+
+            try:
+                birdeye_volumes = await self.birdeye.get_bulk_volume_data(token_addresses)
+            except Exception as e:
+                logger.warning(f"Birdeye bulk volume fetch failed: {e}")
+
+            try:
+                dex_volumes = {}
+                for address in token_addresses:
+                    try:
+                        volume = await self.dex_screener.get_token_volume_24h(address)
+                        dex_volumes[address] = volume
+                    except Exception as e:
+                        logger.debug(f"DexScreener volume fetch failed for {address[:8]}: {e}")
+                        dex_volumes[address] = None
+            except Exception as e:
+                logger.warning(f"DexScreener bulk volume fetch failed: {e}")
+
+            # Process each token
+            for token_address in token_addresses:
+                volume_sources = []
+
+                # Add Birdeye data
+                birdeye_volume = birdeye_volumes.get(token_address)
+                if birdeye_volume is not None:
+                    volume_sources.append(VolumeData(
+                        source="birdeye",
+                        volume=birdeye_volume,
+                        confidence=0.8,
+                        timestamp=asyncio.get_event_loop().time()
+                    ))
+
+                # Add DexScreener data
+                dex_volume = dex_volumes.get(token_address)
+                if dex_volume is not None:
+                    volume_sources.append(VolumeData(
+                        source="dexscreener",
+                        volume=dex_volume,
+                        confidence=0.7,
+                        timestamp=asyncio.get_event_loop().time()
+                    ))
+
+                if volume_sources:
+                    validated_result = self._validate_and_combine(volume_sources)
+                else:
+                    # No data available
+                    validated_result = ValidatedVolume(
+                        final_volume=10000.0,
+                        confidence_score=0.1,
+                        sources_used=0,
+                        sources=[],
+                        validation_method="bulk_fallback",
+                        warnings=["No volume data available in bulk fetch"]
+                    )
+
+                results[token_address] = validated_result
+
+            logger.debug(f"✅ Bulk validated volumes for {len(results)} tokens")
+            return results
+
+        except Exception as e:
+            logger.error(f"❌ Bulk volume validation failed: {e}")
+            # Return fallback results for all tokens
+            fallback = ValidatedVolume(
+                final_volume=100000.0,
+                confidence_score=0.0,
+                sources_used=0,
+                sources=[],
+                validation_method="bulk_error_fallback",
+                warnings=[f"Bulk validation error: {str(e)}"]
+            )
+            return {address: fallback for address in token_addresses}
+
     async def _collect_volume_sources(self, token_address: str) -> List[VolumeData]:
         """
         Collect volume data from all available sources

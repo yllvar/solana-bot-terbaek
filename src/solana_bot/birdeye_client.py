@@ -359,22 +359,101 @@ class BirdeyeClient:
         overview = await self.get_token_overview(token_address)
         return overview is not None
 
-    async def get_bulk_token_info(self, token_addresses: List[str]) -> Dict[str, Dict[str, Any]]:
+    async def get_bulk_token_info(self, token_addresses: List[str], batch_size: int = 5) -> Dict[str, Dict[str, Any]]:
         """
-        Get information for multiple tokens at once
+        Get information for multiple tokens at once with batching and rate limiting.
 
         Args:
             token_addresses: List of token addresses
+            batch_size: Number of concurrent requests (default: 5)
 
         Returns:
             Dict mapping addresses to token info
         """
         results = {}
-        for address in token_addresses:
-            info = await self.get_token_overview(address)
-            if info:
-                results[address] = info
-            await asyncio.sleep(0.1)  # Small delay between requests
+        semaphore = asyncio.Semaphore(batch_size)  # Limit concurrent requests
+
+        async def fetch_with_semaphore(address: str):
+            async with semaphore:
+                info = await self.get_token_overview(address)
+                return address, info
+
+        # Create tasks for all addresses
+        tasks = [fetch_with_semaphore(address) for address in token_addresses]
+
+        # Execute with controlled concurrency
+        for task in asyncio.as_completed(tasks):
+            try:
+                address, info = await task
+                if info:
+                    results[address] = info
+                await asyncio.sleep(0.05)  # Small delay between completions
+            except Exception as e:
+                logger.warning(f"Error in bulk fetch for token: {e}")
+                continue
+
+        logger.debug(f"✅ Bulk fetched {len(results)}/{len(token_addresses)} tokens")
+        return results
+
+    async def get_bulk_volume_data(self, token_addresses: List[str]) -> Dict[str, Optional[float]]:
+        """
+        Get volume data for multiple tokens efficiently.
+
+        Args:
+            token_addresses: List of token addresses
+
+        Returns:
+            Dict mapping addresses to volume data
+        """
+        # Use bulk token info to get all data at once
+        token_infos = await self.get_bulk_token_info(token_addresses)
+
+        results = {}
+        for address, info in token_infos.items():
+            volume = info.get('volume24hUSD') if info else None
+            results[address] = float(volume) if volume else None
+
+        return results
+
+    async def get_bulk_price_data(self, token_addresses: List[str]) -> Dict[str, Optional[float]]:
+        """
+        Get price data for multiple tokens efficiently.
+
+        Args:
+            token_addresses: List of token addresses
+
+        Returns:
+            Dict mapping addresses to price data
+        """
+        # Use bulk token info to get all data at once
+        token_infos = await self.get_bulk_token_info(token_addresses)
+
+        results = {}
+        for address, info in token_infos.items():
+            price = info.get('price') if info else None
+            results[address] = float(price) if price else None
+
+        return results
+
+    async def get_bulk_liquidity_data(self, token_addresses: List[str]) -> Dict[str, Optional[float]]:
+        """
+        Get liquidity data for multiple tokens efficiently.
+
+        Args:
+            token_addresses: List of token addresses
+
+        Returns:
+            Dict mapping addresses to liquidity data
+        """
+        # Use bulk token info to get all data at once
+        token_infos = await self.get_bulk_token_info(token_addresses)
+
+        results = {}
+        for address, info in token_infos.items():
+            liquidity = info.get('liquidity') if info else None
+            results[address] = float(liquidity) if liquidity else None
+
+        return results
 
     async def get_token_creation_date(self, token_address: str) -> Optional[float]:
         """
