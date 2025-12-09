@@ -1,26 +1,26 @@
 # Solana Trading Bot
 
-A comprehensive Solana trading bot with advanced pool detection, token analysis, and automated trading capabilities.
+Bot trading Solana yang comprehensive dengan pool detection advanced, analisis token, dan automated trading capabilities.
 
 ## 🚀 Features
 
-- **Real-time Pool Detection**: Monitor Raydium DEX for new token launches
-- **Advanced Token Analysis**: Comprehensive security and risk assessment
-- **Automated Trading**: Configurable buy/sell triggers and strategies
-- **WebSocket Integration**: Real-time transaction streaming
-- **Risk Management**: Multiple safety filters and trading limits
-- **Production Ready**: Comprehensive testing and error handling
+- **Real-time Pool Detection**: Monitor Raydium DEX untuk token launches baru
+- **Advanced Token Analysis**: Security assessment dan risk analysis yang komprehensif
+- **Automated Trading**: Buy/sell triggers dan strategies yang boleh configure
+- **WebSocket Integration**: Transaction streaming real-time
+- **Risk Management**: Multiple safety filters dan trading limits
+- **Production Ready**: Testing comprehensive dengan error handling
 
-## 📁 Project Structure
+## 📁 Struktur Projek
 
 ```
 /Users/apple/solana-bot/
 ├── src/                          # Source code
 │   ├── solana_bot/              # Main bot package
 │   │   ├── config.py            # Configuration management
-│   │   ├── monitor.py           # Pool monitoring and detection
+│   │   ├── monitor.py           # Pool monitoring dan detection
 │   │   ├── security.py          # Token security analysis
-│   │   ├── triggers.py          # Trading triggers and execution
+│   │   ├── triggers.py          # Trading triggers dan execution
 │   │   ├── wallet.py            # Wallet management
 │   │   ├── transaction.py       # Transaction building
 │   │   ├── price_tracker.py     # Price tracking
@@ -44,7 +44,7 @@ A comprehensive Solana trading bot with advanced pool detection, token analysis,
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
+1. **Clone repository ni**
    ```bash
    git clone <repository-url>
    cd solana-bot
@@ -55,13 +55,13 @@ A comprehensive Solana trading bot with advanced pool detection, token analysis,
    pip install -r requirements.txt
    ```
 
-3. **Configure the bot**
+3. **Configure bot**
    ```bash
    cp config/bot_config.json config/bot_config.local.json
-   # Edit config/bot_config.local.json with your settings
+   # Edit config/bot_config.local.json dengan settings awak
    ```
 
-## 🚀 Usage
+## 🚀 Cara Guna
 
 ### Quick Start
 ```bash
@@ -75,10 +75,10 @@ python solana_bot_cli.py
 
 ### Testing
 ```bash
-# Run all tests
+# Run semua tests
 pytest
 
-# Run specific test categories
+# Run test categories tertentu
 pytest tests/unit/
 pytest tests/integration/
 pytest tests/e2e/
@@ -86,48 +86,48 @@ pytest tests/e2e/
 
 ## ⚙️ Configuration
 
-The bot is configured via JSON files in the `config/` directory:
+Bot ni configure melalui JSON files dalam directory `config/`:
 
-- `bot_config.json`: Main configuration
+- `bot_config.json`: Configuration utama
 - Trading parameters, security filters, API endpoints
-- See `docs/` for detailed configuration options
+- Tengok `docs/` untuk configuration options yang detail
 
 ## 🧪 Testing
 
-The project includes comprehensive testing:
+Projek ni ada comprehensive testing:
 
-- **98+ automated tests** covering all critical functionality
-- **Unit tests** for individual components
-- **Integration tests** for component interaction
-- **End-to-end tests** for complete workflows
-- **Performance tests** for scalability validation
+- **98+ automated tests** yang cover semua critical functionality
+- **Unit tests** untuk individual components
+- **Integration tests** untuk component interaction
+- **End-to-end tests** untuk complete workflows
+- **Performance tests** untuk scalability validation
 
 ## 📚 Documentation
 
-- `docs/README.md`: Main documentation
+- `docs/README.md`: Documentation utama
 - `docs/QUICKSTART.md`: Quick start guide
 - `docs/IMPLEMENTATION_PLAN.md`: Technical implementation details
-- `docs/E2E_TESTING_PLAN.md`: Testing strategy and coverage
+- `docs/E2E_TESTING_PLAN.md`: Testing strategy dan coverage
 
 ## 🔒 Security
 
-- Never commit private keys or sensitive data
-- Use test wallets for development
-- All sensitive data is gitignored
-- Comprehensive input validation and sanitization
+- Jangan sesekali commit private keys atau sensitive data
+- Guna test wallets untuk development
+- Semua sensitive data dah gitignored
+- Input validation dan sanitization yang comprehensive
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+1. Fork repository ni
+2. Create feature branch
+3. Tambah tests untuk functionality baru
+4. Pastikan semua tests pass
+5. Submit pull request
 
 ## 📄 License
 
-This project is for educational purposes only. Use at your own risk.
+Projek ni untuk tujuan educational sahaja. Guna atas risiko sendiri.
 
 ## ⚠️ Disclaimer
 
-This software is provided as-is for educational purposes. Trading cryptocurrencies involves significant risk. Always test thoroughly and never risk more than you can afford to lose.
+Software ni disediakan as-is untuk tujuan educational. Trading cryptocurrencies melibatkan risiko yang signifikan. Sentiasa test dengan teliti dan jangan sesekali risk lebih dari yang awak mampu untuk rugi.
