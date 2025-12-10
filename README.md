@@ -754,12 +754,7 @@ Lihat [LICENSE](LICENSE) untuk full text.
 
 ## 📞 Sokongan & Komuniti
 
-- 🐛 **GitHub Issues:** [Report bugs](https://github.com/yllvar/solana-bot-terbaek/issues)
-- 💬 **Discussions:** [Ask questions](https://github.com/yllvar/solana-bot-terbaek/discussions)
-- 📖 **Wiki:** [Documentation](https://github.com/yllvar/solana-bot-terbaek/wiki)
-- 🐦 **Twitter:** [@yllvar](https://twitter.com/yllvar) (coming soon)
-- 💬 **Telegram:** [Join community](https://t.me/solana_bot_terbaek) (coming soon)
-
+- Baca doa qunut
 ---
 
 ## 🙏 Terima Kasih
