@@ -9,6 +9,7 @@ from solana.rpc.websocket_api import connect
 from solana.rpc.commitment import Confirmed
 
 from .raydium.swap import RaydiumSwap
+from .transaction import TransactionBuilder
 from .rugcheck_client import RugCheckClient, RiskLevel
 from .birdeye_client import BirdeyeClient
 from .dex_screener_client import DexScreenerClient

@@ -4,8 +4,8 @@ Unit tests for TradeTriggers class enhancements
 import pytest
 import time
 from unittest.mock import Mock, AsyncMock
-from solana_bot.triggers import TradeTriggers
-from solana_bot.config import BotConfig
+from src.solana_bot.triggers import TradeTriggers
+from src.solana_bot.config import BotConfig
 
 
 class TestTradeTriggersEnhancements:

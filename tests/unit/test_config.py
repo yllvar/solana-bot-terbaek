@@ -3,7 +3,7 @@ Unit tests for BotConfig class enhancements
 """
 import pytest
 import json
-from solana_bot.config import BotConfig
+from src.solana_bot.config import BotConfig
 
 
 class TestBotConfigEnhancements:

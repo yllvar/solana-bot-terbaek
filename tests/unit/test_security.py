@@ -3,8 +3,8 @@ Unit tests for SecurityAnalyzer class enhancements
 """
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from solana_bot.security import SecurityAnalyzer
-from solana_bot.config import BotConfig
+from src.solana_bot.security import SecurityAnalyzer
+from src.solana_bot.config import BotConfig
 
 
 class TestSecurityAnalyzerEnhancements:

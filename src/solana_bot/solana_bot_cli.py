@@ -10,16 +10,14 @@ import sys
 from pathlib import Path
 from colorama import init, Fore, Style
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from src.solana_bot.config import BotConfig
-from src.solana_bot.wallet import WalletManager
-from src.solana_bot.monitor import PoolMonitor
-from src.solana_bot.security import SecurityAnalyzer
-from src.solana_bot.raydium.swap import RaydiumSwap
-from src.solana_bot.transaction import TransactionBuilder
-from src.solana_bot.price_tracker import PriceTracker
-from src.solana_bot.triggers import TradeTriggers
+from .config import BotConfig
+from .wallet import WalletManager
+from .monitor import PoolMonitor
+from .security import SecurityAnalyzer
+from .raydium.swap import RaydiumSwap
+from .transaction import TransactionBuilder
+from .price_tracker import PriceTracker
+from .triggers import TradeTriggers
 
 init(autoreset=True)
 
@@ -47,7 +45,7 @@ logger = logging.getLogger(__name__)
 logger.info(f"📝 General log file: {log_filename}")
 
 # Import after logging setup to get scanning log filename
-from src.solana_bot.monitor import scanning_logger, SCANNING_LOG_FILENAME, MARKET_SCANNING_LOG_FILENAME
+from .monitor import scanning_logger, SCANNING_LOG_FILENAME, MARKET_SCANNING_LOG_FILENAME
 
 logger.info(f"🔍 Raydium scanning log: {SCANNING_LOG_FILENAME}")
 logger.info(f"📈 Market scanning log: {MARKET_SCANNING_LOG_FILENAME}")
@@ -75,7 +73,25 @@ class SolanaSnipingBot:
             
             # 1. Config
             print(f"{Fore.YELLOW}📋 Memuat konfigurasi...")
-            self.config = BotConfig("config/bot_config.json")
+            # Try multiple possible config paths
+            config_paths = [
+                "../../config/bot_config.json",
+                "../../../config/bot_config.json", 
+                "config/bot_config.json",
+                "../config/bot_config.json"
+            ]
+            
+            config_loaded = False
+            for config_path in config_paths:
+                try:
+                    self.config = BotConfig(config_path)
+                    config_loaded = True
+                    break
+                except FileNotFoundError:
+                    continue
+            
+            if not config_loaded:
+                raise FileNotFoundError(f"Could not find config file. Tried paths: {config_paths}")
             print(f"{Fore.GREEN}✅ Konfigurasi berjaya dimuat\n")
             
             # 2. Wallet
