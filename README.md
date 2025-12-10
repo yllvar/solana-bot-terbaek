@@ -440,34 +440,34 @@ solana-bot --dashboard --port 3000
 
 ## 🔮 Pembangunan Masa Depan
 
-### **🚀 Roadmap 2025**
+### **🚀 Roadmap 2026**
 
 ```mermaid
 gantt
     title Solana Bot Development Roadmap
     dateFormat YYYY-MM-DD
     section Phase 1: Foundation ✅
-    Multi-source validation     :done, 2025-01-01, 30d
-    AI Integration (Together.ai):done, 2025-01-15, 15d
-    Security layers            :done, 2025-02-01, 20d
+    Multi-source validation     :done, 2026-01-01, 30d
+    AI Integration (Together.ai):done, 2026-01-15, 15d
+    Security layers            :done, 2026-02-01, 20d
     
     section Phase 2: Intelligence 🔄
-    Graph Neural Networks      :active, 2025-03-01, 45d
-    Transformer Models         :active, 2025-03-15, 45d
-    Meta-Learning              : 2025-04-01, 60d
+    Graph Neural Networks      :active, 2026-03-01, 45d
+    Transformer Models         :active, 2026-03-15, 45d
+    Meta-Learning              : 2026-04-01, 60d
     
     section Phase 3: Advanced 📈
-    RL Agent Training          : 2025-05-01, 60d
-    Multi-DEX Arbitrage        : 2025-06-01, 45d
-    Portfolio Management       : 2025-07-01, 30d
+    RL Agent Training          : 2026-05-01, 60d
+    Multi-DEX Arbitrage        : 2026-06-01, 45d
+    Portfolio Management       : 2026-07-01, 30d
     
     section Phase 4: Platform 🎯
-    Web Dashboard              : 2025-06-15, 60d
-    Mobile App                 : 2025-08-01, 90d
-    Cloud Deployment           : 2025-09-01, 30d
+    Web Dashboard              : 2026-06-15, 60d
+    Mobile App                 : 2026-08-01, 90d
+    Cloud Deployment           : 2026-09-01, 30d
 ```
 
-### **Phase 2: AI Intelligence (Q1-Q2 2025)** 🤖
+### **Phase 2: AI Intelligence (Q1-Q2 2026)** 🤖
 
 #### **Graph Neural Networks (GNN)**
 ```mermaid
@@ -507,7 +507,7 @@ graph LR
 # Quick adaptation to new trends (AI agents → Animals → Political memes)
 ```
 
-### **Phase 3: Advanced Trading (Q2-Q3 2025)** 📈
+### **Phase 3: Advanced Trading (Q2-Q3 2026)** 📈
 
 #### **Reinforcement Learning Agent**
 - Live learning from actual P&L
@@ -537,7 +537,7 @@ graph TD
 - Rebalancing automation
 - Drawdown protection
 
-### **Phase 4: Platform Evolution (Q3-Q4 2025)** 🎯
+### **Phase 4: Platform Evolution (Q3-Q4 2026)** 🎯
 
 #### **Web Dashboard**
 ```
